@@ -8,6 +8,7 @@ export default function RootLayout() {
       <Tabs.Screen name="emergency" options={{ headerShown: false}} />
       <Tabs.Screen name="feedback" options={{ headerShown: false}} />
       <Tabs.Screen name="profile" options={{ headerShown: false}} />
+      
     </Tabs>
   );
 }
