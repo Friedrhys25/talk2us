@@ -1,215 +1,193 @@
 import { useState, useEffect, useRef } from "react";
-
-const Ionicons = ({ name, size, color }) => {
-  const iconMap = {
-    "arrow-back": "←",
-    "send": "➤",
-    "chatbubble-ellipses-outline": "💬",
-    "person-circle-outline": "👤",
-  };
-  return (
-    <span style={{ fontSize: size, lineHeight: 1, color }}>{iconMap[name] || "•"}</span>
-  );
-};
+import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 
 export default function MessagesPage() {
+  const router = useRouter();
   const [messages, setMessages] = useState([
     { id: 1, sender: "admin", text: "Hello! How can I assist you today?" },
     { id: 2, sender: "user", text: "Good day! I just want to report a broken streetlight." },
   ]);
   const [newMessage, setNewMessage] = useState("");
-  const messagesEndRef = useRef(null);
+  const scrollViewRef = useRef(null);
 
   const sendMessage = () => {
     if (!newMessage.trim()) return;
     const userMsg = { id: Date.now(), sender: "user", text: newMessage };
     setMessages((prev) => [...prev, userMsg]);
     setNewMessage("");
+
     setTimeout(() => {
       setMessages((prev) => [
         ...prev,
-        { id: Date.now() + 1, sender: "admin", text: "Got it! We’ll forward this to our maintenance team." },
+        {
+          id: Date.now() + 1,
+          sender: "admin",
+          text: "Got it! We’ll forward this to our maintenance team.",
+        },
       ]);
     }, 1000);
   };
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    scrollViewRef.current?.scrollToEnd({ animated: true });
   }, [messages]);
 
   return (
-    <div style={styles.safeArea}>
-      <div style={styles.container}>
-        {/* Header */}
-        <div style={styles.headercon}>
-          <button style={styles.backButton} 
-          onClick={() => window.history.back()}>
-            <Ionicons name="arrow-back" size={24} color="#333" />
-          </button>
-          <h1 style={styles.headerText}>Messages</h1>
-        </div>
+    <View style={styles.safeArea}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={24} color="#333" />
+        </TouchableOpacity>
+        <Text style={styles.headerText}>Messages</Text>
+      </View>
 
-        {/* Chat Area */}
-        <div style={styles.chatContainer}>
-          <div style={styles.infoCard}>
-            <Ionicons name="chatbubble-ellipses-outline" size={26} color="#4A90E2" />
-            <div>
-              <h3 style={styles.infoTitle}>Barangay Chat Support</h3>
-              <p style={styles.infoText}>You’re now chatting with an admin. Please be respectful.</p>
-            </div>
-          </div>
+      {/* Chat Section */}
+      <View style={styles.chatContainer}>
+        <View style={styles.infoCard}>
+          <Ionicons name="chatbubble-ellipses-outline" size={26} color="#4A90E2" />
+          <View>
+            <Text style={styles.infoTitle}>Barangay Chat Support</Text>
+            <Text style={styles.infoText}>You’re now chatting with an admin. Please be respectful.</Text>
+          </View>
+        </View>
 
-          <div style={styles.messagesList}>
-            {messages.map((msg) => (
-              <div
-                key={msg.id}
+        <ScrollView
+          ref={scrollViewRef}
+          style={styles.messagesList}
+          showsVerticalScrollIndicator={false}
+        >
+          {messages.map((msg) => (
+            <View
+              key={msg.id}
+              style={[
+                styles.messageBubble,
+                msg.sender === "user" ? styles.userBubble : styles.adminBubble,
+              ]}
+            >
+              <Text
                 style={{
-                  ...styles.messageBubble,
-                  alignSelf: msg.sender === "user" ? "flex-end" : "flex-start",
-                  backgroundColor: msg.sender === "user" ? "#667EEA" : "#E5E7EB",
-                  color: msg.sender === "user" ? "white" : "#333",
-                  borderTopRightRadius: msg.sender === "user" ? 0 : 16,
-                  borderTopLeftRadius: msg.sender === "admin" ? 0 : 16,
+                  color: msg.sender === "user" ? "#fff" : "#333",
                 }}
               >
                 {msg.text}
-              </div>
-            ))}
-            <div ref={messagesEndRef} />
-          </div>
-        </div>
+              </Text>
+            </View>
+          ))}
+        </ScrollView>
+      </View>
 
-        {/* Message Input */}
-        <div style={styles.inputContainer}>
-          <input
-            type="text"
-            style={styles.input}
-            placeholder="Type your message..."
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-          />
-          <button style={styles.sendButton} onClick={sendMessage}>
-            <Ionicons name="send" size={22} color="white" />
-          </button>
-        </div>
-      </div>
-    </div>
+      {/* Input Section */}
+      <View style={styles.inputContainer}>
+        <TextInput
+          style={styles.input}
+          placeholder="Type your message..."
+          value={newMessage}
+          onChangeText={setNewMessage}
+          onSubmitEditing={sendMessage}
+          returnKeyType="send"
+        />
+        <TouchableOpacity style={styles.sendButton} onPress={sendMessage}>
+          <Ionicons name="send" size={22} color="white" />
+        </TouchableOpacity>
+      </View>
+    </View>
   );
 }
 
-const styles = {
+const styles = StyleSheet.create({
   safeArea: {
-    width: "100%",
-    height: "100vh",
-    backgroundColor: "#F5F7FA",
-    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-    overflow: "hidden",
-    display: "flex",
-    flexDirection: "column",
-  },
-  container: {
     flex: 1,
-    display: "flex",
-    flexDirection: "column",
-    backgroundColor: "white",
+    backgroundColor: "#F5F7FA",
   },
-  headercon: {
-    padding: 20,
-    display: "flex",
+  header: {
     flexDirection: "row",
     alignItems: "center",
+    padding: 16,
     backgroundColor: "#F5F6FA",
-    borderBottom: "1px solid #E0E0E0",
-    flexShrink: 0,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E0E0E0",
   },
   backButton: {
-    background: "none",
-    border: "none",
-    cursor: "pointer",
-    padding: 8,
-    marginRight: 12,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
+    marginRight: 10,
+    padding: 6,
   },
   headerText: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: "700",
     color: "#333",
-    margin: 0,
   },
   chatContainer: {
     flex: 1,
-    display: "flex",
-    flexDirection: "column",
-    overflowY: "auto",
-    padding: 20,
+    padding: 16,
     backgroundColor: "#F9FAFB",
   },
   infoCard: {
-    display: "flex",
-    gap: 14,
+    flexDirection: "row",
     alignItems: "center",
+    gap: 12,
     backgroundColor: "#EBF5FF",
-    padding: 16,
+    padding: 14,
     borderRadius: 12,
-    border: "1px solid #B3D9FF",
+    borderWidth: 1,
+    borderColor: "#B3D9FF",
     marginBottom: 20,
   },
   infoTitle: {
-    margin: 0,
     fontSize: 16,
     fontWeight: "700",
     color: "#1A1A1A",
   },
   infoText: {
-    margin: "4px 0 0 0",
     fontSize: 13,
     color: "#4A5568",
   },
   messagesList: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 12,
-    flexGrow: 1,
-    overflowY: "auto",
-    paddingBottom: 20,
+    flex: 1,
   },
   messageBubble: {
-    maxWidth: "70%",
-    padding: "10px 16px",
+    maxWidth: "75%",
+    padding: 10,
     borderRadius: 16,
-    fontSize: 15,
-    lineHeight: 1.4,
-    boxShadow: "0 1px 2px rgba(0,0,0,0.1)",
-    wordBreak: "break-word",
+    marginBottom: 10,
+  },
+  userBubble: {
+    alignSelf: "flex-end",
+    backgroundColor: "#667EEA",
+    borderTopRightRadius: 0,
+  },
+  adminBubble: {
+    alignSelf: "flex-start",
+    backgroundColor: "#E5E7EB",
+    borderTopLeftRadius: 0,
   },
   inputContainer: {
-    display: "flex",
+    flexDirection: "row",
     alignItems: "center",
-    padding: 14,
+    padding: 12,
     backgroundColor: "#F5F6FA",
-    borderTop: "1px solid #E0E0E0",
+    borderTopWidth: 1,
+    borderTopColor: "#E0E0E0",
   },
   input: {
     flex: 1,
-    padding: "12px 16px",
-    fontSize: 15,
+    backgroundColor: "#fff",
     borderRadius: 20,
-    border: "2px solid #E0E0E0",
-    outline: "none",
+    borderWidth: 1,
+    borderColor: "#E0E0E0",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    fontSize: 15,
     marginRight: 10,
   },
   sendButton: {
-    background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-    border: "none",
-    borderRadius: "50%",
     width: 44,
     height: 44,
-    display: "flex",
+    borderRadius: 22,
+    backgroundColor: "#667EEA",
     alignItems: "center",
     justifyContent: "center",
-    cursor: "pointer",
   },
-};
+});

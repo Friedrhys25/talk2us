@@ -1,5 +1,16 @@
-import { useState } from "react";
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  Modal,
+  StyleSheet,
+  SafeAreaView,
+} from "react-native";
+import { useRouter } from "expo-router";
 
+// ✅ Emoji-based Ionicons (no dependency)
 const Ionicons = ({ name, size, color }) => {
   const iconMap = {
     "arrow-back": "←",
@@ -19,24 +30,20 @@ const Ionicons = ({ name, size, color }) => {
     "checkmark-circle": "✓",
     "time-outline": "🕐",
     "trophy-outline": "🏆",
-    "close": "✕"
+    "close": "✕",
   };
-  return (
-    <span style={{ fontSize: size, lineHeight: 1 }}>
-      {iconMap[name] || "•"}
-    </span>
-  );
+  return <Text style={{ fontSize: size, color }}>{iconMap[name] || "•"}</Text>;
 };
 
 export default function ProfilePage() {
-  const [isEditing, setIsEditing] = useState(false);
+  const router = useRouter();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [userData, setUserData] = useState({
     name: "Juan Dela Cruz",
     email: "juan.delacruz@email.com",
     phone: "0912 345 6789",
     address: "Purok 1, Brgy San Roque, Victoria",
-    memberSince: "January 2024"
+    memberSince: "January 2024",
   });
 
   const stats = [
@@ -46,356 +53,212 @@ export default function ProfilePage() {
   ];
 
   const recentActivity = [
-    { id: 1, action: "Filed complaint", title: "Road repair needed", time: "2 days ago", status: "In Progress" },
-    { id: 2, action: "Received response", title: "Street light issue", time: "5 days ago", status: "Resolved" },
-    { id: 3, action: "Submitted feedback", title: "Service improvement", time: "1 week ago", status: "Reviewed" },
+    {
+      id: 1,
+      action: "Filed complaint",
+      title: "Road repair needed",
+      time: "2 days ago",
+      status: "In Progress",
+    },
+    {
+      id: 2,
+      action: "Received response",
+      title: "Street light issue",
+      time: "5 days ago",
+      status: "Resolved",
+    },
+    {
+      id: 3,
+      action: "Submitted feedback",
+      title: "Service improvement",
+      time: "1 week ago",
+      status: "Reviewed",
+    },
   ];
 
-  const menuItems = [
-    { id: 1, title: "Change Password", icon: "shield-outline", color: "#667eea" },
-  ];
-
-  const handleLogout = () => {
-    setShowLogoutModal(true);
-  };
-
-  const confirmLogout = () => {
-    // Redirect to index page
-    window.location.href = '/';
-  };
-
-  const cancelLogout = () => {
-    setShowLogoutModal(false);
-  };
+  const handleLogout = () => setShowLogoutModal(true);
+  const confirmLogout = () => router.push("/");
+  const cancelLogout = () => setShowLogoutModal(false);
 
   return (
-    <div style={styles.safeArea}>
-      <div style={styles.container}>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
         {/* Header */}
-        <div style={styles.headercon}>
-          <button style={styles.backButton}
-                    onClick={() => window.history.back()}>
-            <Ionicons name="arrow-back" size={24} color="#333" />
-          </button>
-          <h1 style={styles.headerText}>Profile</h1>
-          <button style={styles.editButton}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.iconButton}>
+            <Ionicons name="arrow-back" size={22} color="#333" />
+          </TouchableOpacity>
+          <Text style={styles.headerText}>Profile</Text>
+          <TouchableOpacity style={styles.iconButton}>
             <Ionicons name="create-outline" size={22} color="#667eea" />
-          </button>
-        </div>
+          </TouchableOpacity>
+        </View>
 
-        {/* Logout Confirmation Modal */}
-        {showLogoutModal && (
-          <div style={styles.modalOverlay} onClick={cancelLogout}>
-            <div style={styles.modalCard} onClick={(e) => e.stopPropagation()}>
-              <div style={styles.modalIcon}>
-                <Ionicons name="log-out-outline" size={48} color="#E74C3C" />
-              </div>
-              <h2 style={styles.modalTitle}>Log Out</h2>
-              <p style={styles.modalMessage}>
-                Are you sure you want to log out? You'll need to sign in again to access your account.
-              </p>
-              <div style={styles.modalButtons}>
-                <button style={styles.cancelButton} onClick={cancelLogout}>
-                  Cancel
-                </button>
-                <button style={styles.confirmButton} onClick={confirmLogout}>
-                  Yes, Log Out
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Modal */}
+        <Modal
+          visible={showLogoutModal}
+          transparent
+          animationType="fade"
+          onRequestClose={cancelLogout}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalCard}>
+              <Ionicons name="log-out-outline" size={48} color="#E74C3C" />
+              <Text style={styles.modalTitle}>Log Out</Text>
+              <Text style={styles.modalMessage}>
+                Are you sure you want to log out? You'll need to sign in again
+                to access your account.
+              </Text>
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={[styles.modalBtn, styles.cancelBtn]}
+                  onPress={cancelLogout}
+                >
+                  <Text style={styles.cancelText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalBtn, styles.confirmBtn]}
+                  onPress={confirmLogout}
+                >
+                  <Text style={styles.confirmText}>Yes, Log Out</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
 
-        <div style={styles.scrollContent}>
-          {/* Profile Header Card */}
-          <div style={styles.profileCard}>
-            <div style={styles.avatarContainer}>
-              <div style={styles.avatar}>
+        <ScrollView contentContainerStyle={styles.scroll}>
+          {/* Profile Card */}
+          <View style={styles.profileCard}>
+            <View style={styles.avatarContainer}>
+              <View style={styles.avatar}>
                 <Ionicons name="person-circle" size={80} color="#667eea" />
-              </div>
-              <button style={styles.avatarBadge}>
-                <Ionicons name="create-outline" size={16} color="white" />
-              </button>
-            </div>
-            <h2 style={styles.userName}>{userData.name}</h2>
-            <p style={styles.userEmail}>{userData.email}</p>
-            <div style={styles.memberBadge}>
+              </View>
+              <TouchableOpacity style={styles.avatarBadge}>
+                <Ionicons name="create-outline" size={16} color="#fff" />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.userName}>{userData.name}</Text>
+            <Text style={styles.userEmail}>{userData.email}</Text>
+            <View style={styles.memberBadge}>
               <Ionicons name="trophy-outline" size={14} color="#F39C12" />
-              <span style={styles.memberText}>Member since {userData.memberSince}</span>
-            </div>
-          </div>
+              <Text style={styles.memberText}>
+                Member since {userData.memberSince}
+              </Text>
+            </View>
+          </View>
 
-          {/* Stats Grid */}
-          <div style={styles.statsGrid}>
-            {stats.map((stat, index) => (
-              <div key={index} style={styles.statCard}>
-                <div style={{ ...styles.statIcon, backgroundColor: `${stat.color}15` }}>
-                  <span style={{ fontSize: 24 }}>{stat.icon}</span>
-                </div>
-                <p style={styles.statValue}>{stat.value}</p>
-                <p style={styles.statLabel}>{stat.label}</p>
-              </div>
+          {/* Stats */}
+          <View style={styles.statsGrid}>
+            {stats.map((stat, i) => (
+              <View key={i} style={styles.statCard}>
+                <View
+                  style={[
+                    styles.statIcon,
+                    { backgroundColor: `${stat.color}25` },
+                  ]}
+                >
+                  <Text style={{ fontSize: 24 }}>{stat.icon}</Text>
+                </View>
+                <Text style={styles.statValue}>{stat.value}</Text>
+                <Text style={styles.statLabel}>{stat.label}</Text>
+              </View>
             ))}
-          </div>
+          </View>
 
-          {/* Personal Information */}
-          <div style={styles.section}>
-            <h3 style={styles.sectionTitle}>Personal Information</h3>
-            <div style={styles.infoList}>
-              <div style={styles.infoItem}>
-                <div style={styles.infoIcon}>
-                  <Ionicons name="person-outline" size={20} color="#666" />
-                </div>
-                <div style={styles.infoContent}>
-                  <p style={styles.infoLabel}>Full Name</p>
-                  <p style={styles.infoValue}>{userData.name}</p>
-                </div>
-              </div>
-
-              <div style={styles.infoItem}>
-                <div style={styles.infoIcon}>
-                  <Ionicons name="mail-outline" size={20} color="#666" />
-                </div>
-                <div style={styles.infoContent}>
-                  <p style={styles.infoLabel}>Email Address</p>
-                  <p style={styles.infoValue}>{userData.email}</p>
-                </div>
-              </div>
-
-              <div style={styles.infoItem}>
-                <div style={styles.infoIcon}>
-                  <Ionicons name="call-outline" size={20} color="#666" />
-                </div>
-                <div style={styles.infoContent}>
-                  <p style={styles.infoLabel}>Phone Number</p>
-                  <p style={styles.infoValue}>{userData.phone}</p>
-                </div>
-              </div>
-
-              <div style={styles.infoItem}>
-                <div style={styles.infoIcon}>
-                  <Ionicons name="location-outline" size={20} color="#666" />
-                </div>
-                <div style={styles.infoContent}>
-                  <p style={styles.infoLabel}>Address</p>
-                  <p style={styles.infoValue}>{userData.address}</p>
-                </div>
-              </div>
-            </div>
-          </div>
+          {/* Personal Info */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Personal Information</Text>
+            {[
+              { icon: "person-outline", label: "Full Name", value: userData.name },
+              { icon: "mail-outline", label: "Email", value: userData.email },
+              { icon: "call-outline", label: "Phone", value: userData.phone },
+              { icon: "location-outline", label: "Address", value: userData.address },
+            ].map((item, i) => (
+              <View key={i} style={styles.infoItem}>
+                <View style={styles.infoIcon}>
+                  <Ionicons name={item.icon} size={20} color="#666" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.infoLabel}>{item.label}</Text>
+                  <Text style={styles.infoValue}>{item.value}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
 
           {/* Recent Activity */}
-          <div style={styles.section}>
-            <h3 style={styles.sectionTitle}>Recent Activity</h3>
-            <div style={styles.activityList}>
-              {recentActivity.map((activity) => (
-                <div key={activity.id} style={styles.activityItem}>
-                  <div style={styles.activityIcon}>
-                    <Ionicons name="document-text-outline" size={20} color="#667eea" />
-                  </div>
-                  <div style={styles.activityContent}>
-                    <p style={styles.activityAction}>{activity.action}</p>
-                    <p style={styles.activityTitle}>{activity.title}</p>
-                    <div style={styles.activityFooter}>
-                      <span style={styles.activityTime}>
-                        <Ionicons name="time-outline" size={14} color="#999" />
-                        {activity.time}
-                      </span>
-                      <span
-                        style={{
-                          ...styles.activityBadge,
-                          backgroundColor: activity.status === "Resolved" ? "#D4EDDA" : 
-                                          activity.status === "In Progress" ? "#FFF3CD" : "#E3F2FD",
-                          color: activity.status === "Resolved" ? "#155724" : 
-                                activity.status === "In Progress" ? "#856404" : "#1565C0",
-                        }}
-                      >
-                        {activity.status}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Change Password */}
-          <div style={styles.section}>
-            <h3 style={styles.sectionTitle}>Security</h3>
-            <div style={styles.menuList}>
-              {menuItems.map((item) => (
-                <button key={item.id} style={styles.menuItem}>
-                  <div style={styles.menuLeft}>
-                    <div style={{ ...styles.menuIcon, backgroundColor: `${item.color}15` }}>
-                      <Ionicons name={item.icon} size={20} color={item.color} />
-                    </div>
-                    <span style={styles.menuTitle}>{item.title}</span>
-                  </div>
-                  <div style={styles.menuRight}>
-                    <span style={{ fontSize: 18, color: "#999" }}>›</span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Recent Activity</Text>
+            {recentActivity.map((act) => (
+              <View key={act.id} style={styles.activityItem}>
+                <View style={styles.activityIcon}>
+                  <Ionicons name="document-text-outline" size={20} color="#667eea" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.activityAction}>{act.action}</Text>
+                  <Text style={styles.activityTitle}>{act.title}</Text>
+                  <View style={styles.activityFooter}>
+                    <Text style={styles.activityTime}>
+                      🕐 {act.time}
+                    </Text>
+                    <View
+                      style={[
+                        styles.activityBadge,
+                        act.status === "Resolved"
+                          ? styles.badgeResolved
+                          : act.status === "In Progress"
+                          ? styles.badgeProgress
+                          : styles.badgeReviewed,
+                      ]}
+                    >
+                      <Text style={styles.badgeText}>{act.status}</Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+            ))}
+          </View>
 
           {/* Logout Button */}
-          <button style={styles.logoutButton} onClick={handleLogout}>
+          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
             <Ionicons name="log-out-outline" size={20} color="#E74C3C" />
-            <span style={styles.logoutText}>Log Out</span>
-          </button>
-
-          <div style={{ height: 40 }} />
-        </div>
-      </div>
-    </div>
+            <Text style={styles.logoutText}>Log Out</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+    </SafeAreaView>
   );
 }
 
-const styles = {
-  safeArea: {
-    width: "100%",
-    height: "100vh",
-    backgroundColor: "#F5F7FA",
-    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-    overflow: "hidden",
-  },
-  container: {
-    width: "100%",
-    height: "100%",
-    display: "flex",
-    flexDirection: "column",
-    backgroundColor: "white",
-    position: "relative",
-  },
-  headercon: {
-    padding: 20,
-    display: "flex",
+const styles = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: "#F5F7FA" },
+  container: { flex: 1, backgroundColor: "#fff" },
+  header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "#F5F6FA",
-    borderBottom: "1px solid #E0E0E0",
-    flexShrink: 0,
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E0E0E0",
   },
-  backButton: {
-    background: "none",
-    border: "none",
-    cursor: "pointer",
-    padding: 8,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  headerText: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#333",
-    margin: 0,
-    flex: 1,
-    textAlign: "center",
-  },
-  editButton: {
-    background: "none",
-    border: "none",
-    cursor: "pointer",
-    padding: 8,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  scrollContent: {
-    flex: 1,
-    overflowY: "auto",
-    overflowX: "hidden",
-    padding: "20px 20px",
-    backgroundColor: "#F5F7FA",
-  },
-  modalOverlay: {
-    position: "fixed",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 1000,
-    padding: "20px",
-  },
-  modalCard: {
-    backgroundColor: "white",
-    borderRadius: 24,
-    padding: "40px 32px",
-    maxWidth: "400px",
-    width: "100%",
-    textAlign: "center",
-    boxShadow: "0 20px 60px rgba(0, 0, 0, 0.3)",
-  },
-  modalIcon: {
-    fontSize: 48,
-    marginBottom: 20,
-  },
-  modalTitle: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#1A1A1A",
-    margin: "0 0 12px 0",
-  },
-  modalMessage: {
-    fontSize: 15,
-    color: "#4A5568",
-    lineHeight: 1.6,
-    margin: "0 0 28px 0",
-  },
-  modalButtons: {
-    display: "flex",
-    gap: 12,
-  },
-  cancelButton: {
-    flex: 1,
-    padding: "14px 24px",
-    backgroundColor: "#F3F4F6",
-    border: "none",
-    borderRadius: 12,
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#4B5563",
-    cursor: "pointer",
-    transition: "background-color 0.2s",
-  },
-  confirmButton: {
-    flex: 1,
-    padding: "14px 24px",
-    backgroundColor: "#E74C3C",
-    border: "none",
-    borderRadius: 12,
-    fontSize: 15,
-    fontWeight: "600",
-    color: "white",
-    cursor: "pointer",
-    transition: "background-color 0.2s",
-  },
+  iconButton: { padding: 8 },
+  headerText: { fontSize: 22, fontWeight: "700", color: "#333" },
+  scroll: { padding: 20 },
   profileCard: {
-    backgroundColor: "white",
-    borderRadius: 24,
-    padding: 32,
-    textAlign: "center",
-    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)",
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    padding: 24,
+    alignItems: "center",
     marginBottom: 20,
+    elevation: 3,
   },
-  avatarContainer: {
-    position: "relative",
-    display: "inline-block",
-    marginBottom: 16,
-  },
+  avatarContainer: { position: "relative" },
   avatar: {
     width: 100,
     height: 100,
-    borderRadius: "50%",
+    borderRadius: 50,
     backgroundColor: "#F3F4F6",
-    display: "flex",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -403,230 +266,129 @@ const styles = {
     position: "absolute",
     bottom: 0,
     right: 0,
-    width: 32,
-    height: 32,
-    borderRadius: "50%",
     backgroundColor: "#667eea",
-    border: "3px solid white",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    cursor: "pointer",
-  },
-  userName: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#1A1A1A",
-    margin: "0 0 4px 0",
-  },
-  userEmail: {
-    fontSize: 14,
-    color: "#6B7280",
-    margin: "0 0 12px 0",
-  },
-  memberBadge: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "#FFF9E6",
-    padding: "6px 12px",
-    borderRadius: 20,
-    border: "1px solid #FFE082",
-  },
-  memberText: {
-    fontSize: 13,
-    color: "#F39C12",
-    fontWeight: "600",
-  },
-  statsGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(3, 1fr)",
-    gap: 12,
-    marginBottom: 20,
-  },
-  statCard: {
-    backgroundColor: "white",
     borderRadius: 16,
-    padding: 16,
-    textAlign: "center",
-    boxShadow: "0 2px 8px rgba(0, 0, 0, 0.06)",
+    padding: 6,
+  },
+  userName: { fontSize: 22, fontWeight: "700", color: "#1A1A1A", marginTop: 10 },
+  userEmail: { fontSize: 14, color: "#6B7280" },
+  memberBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFF9E6",
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    marginTop: 6,
+  },
+  memberText: { color: "#F39C12", fontSize: 12, marginLeft: 6 },
+  statsGrid: { flexDirection: "row", justifyContent: "space-between", marginBottom: 20 },
+  statCard: {
+    flex: 1,
+    backgroundColor: "#fff",
+    borderRadius: 14,
+    padding: 12,
+    alignItems: "center",
+    marginHorizontal: 4,
+    elevation: 2,
   },
   statIcon: {
     width: 48,
     height: 48,
     borderRadius: 12,
-    display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    margin: "0 auto 12px",
+    marginBottom: 6,
   },
-  statValue: {
-    fontSize: 24,
-    fontWeight: "800",
-    color: "#1A1A1A",
-    margin: "0 0 4px 0",
-  },
-  statLabel: {
-    fontSize: 12,
-    color: "#666",
-    margin: 0,
-  },
+  statValue: { fontSize: 20, fontWeight: "700" },
+  statLabel: { fontSize: 12, color: "#666" },
   section: {
-    backgroundColor: "white",
-    borderRadius: 20,
-    padding: 20,
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 16,
     marginBottom: 20,
-    boxShadow: "0 2px 8px rgba(0, 0, 0, 0.06)",
+    elevation: 2,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#1A1A1A",
-    margin: "0 0 16px 0",
-  },
-  infoList: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 16,
-  },
-  infoItem: {
-    display: "flex",
-    alignItems: "flex-start",
-    gap: 14,
-  },
+  sectionTitle: { fontSize: 18, fontWeight: "700", marginBottom: 10 },
+  infoItem: { flexDirection: "row", marginBottom: 12 },
   infoIcon: {
     width: 40,
     height: 40,
     borderRadius: 10,
     backgroundColor: "#F3F4F6",
-    display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    flexShrink: 0,
+    marginRight: 10,
   },
-  infoContent: {
-    flex: 1,
-  },
-  infoLabel: {
-    fontSize: 13,
-    color: "#6B7280",
-    margin: "0 0 4px 0",
-  },
-  infoValue: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#1A1A1A",
-    margin: 0,
-  },
-  activityList: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 12,
-  },
+  infoLabel: { fontSize: 12, color: "#6B7280" },
+  infoValue: { fontSize: 15, fontWeight: "600" },
   activityItem: {
-    display: "flex",
-    gap: 14,
-    padding: 14,
+    flexDirection: "row",
     backgroundColor: "#F9FAFB",
-    borderRadius: 12,
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 8,
   },
   activityIcon: {
     width: 40,
     height: 40,
     borderRadius: 10,
     backgroundColor: "#EEF2FF",
-    display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    flexShrink: 0,
+    marginRight: 10,
   },
-  activityContent: {
-    flex: 1,
-  },
-  activityAction: {
-    fontSize: 13,
-    color: "#6B7280",
-    margin: "0 0 4px 0",
-  },
-  activityTitle: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#1A1A1A",
-    margin: "0 0 8px 0",
-  },
+  activityAction: { fontSize: 12, color: "#6B7280" },
+  activityTitle: { fontSize: 15, fontWeight: "600" },
   activityFooter: {
-    display: "flex",
-    alignItems: "center",
+    flexDirection: "row",
     justifyContent: "space-between",
-  },
-  activityTime: {
-    fontSize: 12,
-    color: "#999",
-    display: "flex",
     alignItems: "center",
-    gap: 4,
   },
+  activityTime: { fontSize: 12, color: "#999" },
   activityBadge: {
-    padding: "4px 10px",
     borderRadius: 10,
-    fontSize: 11,
-    fontWeight: "600",
+    paddingHorizontal: 10,
+    paddingVertical: 3,
   },
-  menuList: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 2,
-  },
-  menuItem: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: 16,
-    backgroundColor: "transparent",
-    border: "none",
-    borderRadius: 12,
-    cursor: "pointer",
-    transition: "background-color 0.2s",
-  },
-  menuLeft: {
-    display: "flex",
-    alignItems: "center",
-    gap: 14,
-  },
-  menuIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  menuTitle: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#1A1A1A",
-  },
-  menuRight: {
-    display: "flex",
-    alignItems: "center",
-    gap: 8,
-  },
+  badgeResolved: { backgroundColor: "#D4EDDA" },
+  badgeProgress: { backgroundColor: "#FFF3CD" },
+  badgeReviewed: { backgroundColor: "#E3F2FD" },
+  badgeText: { fontSize: 11, fontWeight: "600" },
   logoutButton: {
-    width: "100%",
-    display: "flex",
+    flexDirection: "row",
+    backgroundColor: "#FFEBEE",
     alignItems: "center",
     justifyContent: "center",
-    gap: 10,
     padding: 16,
-    backgroundColor: "#FFEBEE",
-    border: "none",
-    borderRadius: 16,
-    cursor: "pointer",
-    marginTop: 20,
+    borderRadius: 14,
   },
-  logoutText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#E74C3C",
+  logoutText: { fontSize: 16, fontWeight: "700", color: "#E74C3C", marginLeft: 6 },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    alignItems: "center",
+    justifyContent: "center",
   },
-};
+  modalCard: {
+    backgroundColor: "#fff",
+    padding: 24,
+    borderRadius: 20,
+    width: "85%",
+    alignItems: "center",
+  },
+  modalTitle: { fontSize: 22, fontWeight: "700", marginTop: 10 },
+  modalMessage: { fontSize: 14, color: "#555", textAlign: "center", marginVertical: 12 },
+  modalButtons: { flexDirection: "row", width: "100%", justifyContent: "space-between" },
+  modalBtn: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: 12,
+    borderRadius: 10,
+    marginHorizontal: 4,
+  },
+  cancelBtn: { backgroundColor: "#F3F4F6" },
+  confirmBtn: { backgroundColor: "#E74C3C" },
+  cancelText: { color: "#333", fontWeight: "600" },
+  confirmText: { color: "#fff", fontWeight: "600" },
+});

@@ -1,5 +1,17 @@
 import { useState } from "react";
+import {
+  SafeAreaView,
+  ScrollView,
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+  Linking,
+} from "react-native";
+import { useRouter } from "expo-router";
 
+// ✅ Emoji-based icons (can replace with @expo/vector-icons)
 const Ionicons = ({ name, size, color }) => {
   const iconMap = {
     "arrow-back": "←",
@@ -7,22 +19,15 @@ const Ionicons = ({ name, size, color }) => {
     "call": "📞",
     "location": "📍",
     "time": "🕐",
-    "shield": "🛡️",
-    "medical": "🏥",
-    "flame": "🔥",
-    "car": "🚗",
-    "warning": "⚠️",
-    "pulse": "💓",
-    "megaphone": "📢"
+    "megaphone": "📢",
   };
   return (
-    <span style={{ fontSize: size, lineHeight: 1 }}>
-      {iconMap[name] || "•"}
-    </span>
+    <Text style={{ fontSize: size, color, lineHeight: size }}>{iconMap[name] || "•"}</Text>
   );
 };
 
 export default function EmergencyPage() {
+  const router = useRouter();
   const [selectedEmergency, setSelectedEmergency] = useState(null);
 
   const emergencyTypes = [
@@ -41,415 +46,254 @@ export default function EmergencyPage() {
   ];
 
   const safetyTips = [
-    { id: 1, title: "Stay Calm", description: "Keep calm and assess the situation before acting" },
-    { id: 2, title: "Location Info", description: "Know your exact location to report accurately" },
-    { id: 3, title: "Follow Instructions", description: "Listen carefully to emergency responders" },
+    { id: 1, title: "Stay Calm", description: "Keep calm and assess the situation before acting." },
+    { id: 2, title: "Location Info", description: "Know your exact location to report accurately." },
+    { id: 3, title: "Follow Instructions", description: "Listen carefully to emergency responders." },
   ];
 
   const handleEmergencyCall = (service) => {
-    alert(`Calling ${service.name} at ${service.number}\n\nIn your React Native app, use:\nLinking.openURL('tel:${service.number}')`);
+    Alert.alert(
+      "Call Emergency",
+      `Call ${service.name} at ${service.number}?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Call", onPress: () => Linking.openURL(`tel:${service.number}`) },
+      ]
+    );
   };
 
   return (
-    <div style={styles.safeArea}>
-      <div style={styles.container}>
-        {/* Header */}
-        <div style={styles.headercon}>
-          <button style={styles.backButton}
-            onClick={() => window.history.back()}>
-            <Ionicons name="arrow-back" size={24} color="#333" />
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color="#333" />
+        </TouchableOpacity>
+        <Text style={styles.headerText}>Emergency Services</Text>
+      </View>
 
-          </button>
-          <h1 style={styles.headerText}>Emergency Services</h1>
-        </div>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+        {/* Alert Banner */}
+        <View style={styles.alertBanner}>
+          <Ionicons name="alert-circle" size={32} color="#E74C3C" />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.alertTitle}>In case of emergency</Text>
+            <Text style={styles.alertText}>
+              Call immediately or use quick dial buttons below. Help is available 24/7.
+            </Text>
+          </View>
+        </View>
 
-        <div style={styles.scrollContent}>
-          {/* Alert Banner */}
-          <div style={styles.alertBanner}>
-            <div style={styles.alertIcon}>
-              <Ionicons name="alert-circle" size={32} color="#E74C3C" />
-            </div>
-            <div style={styles.alertContent}>
-              <h3 style={styles.alertTitle}>In case of emergency</h3>
-              <p style={styles.alertText}>
-                Call immediately or use quick dial buttons below. Help is available 24/7.
-              </p>
-            </div>
-          </div>
+        {/* Emergency Buttons */}
+        <Text style={styles.sectionTitle}>Quick Emergency Dial</Text>
+        <View style={styles.grid}>
+          {emergencyTypes.map((service) => (
+            <TouchableOpacity
+              key={service.id}
+              style={[
+                styles.emergencyCard,
+                {
+                  borderColor: selectedEmergency === service.id ? service.color : "#E0E0E0",
+                  backgroundColor: selectedEmergency === service.id ? `${service.color}20` : "white",
+                },
+              ]}
+              onPressIn={() => setSelectedEmergency(service.id)}
+              onPressOut={() => setSelectedEmergency(null)}
+              onPress={() => handleEmergencyCall(service)}
+            >
+              <Text style={[styles.icon, { color: service.color }]}>{service.icon}</Text>
+              <Text style={styles.emergencyName}>{service.name}</Text>
+              <Text style={styles.emergencyNumber}>{service.number}</Text>
+              <Text style={styles.emergencyDesc}>{service.description}</Text>
+              <TouchableOpacity
+                onPress={() => handleEmergencyCall(service)}
+                style={[styles.callButton, { backgroundColor: service.color }]}
+              >
+                <Ionicons name="call" size={18} color="#fff" />
+                <Text style={styles.callButtonText}>Call Now</Text>
+              </TouchableOpacity>
+            </TouchableOpacity>
+          ))}
+        </View>
 
-          {/* Emergency Services Grid */}
-          <div style={styles.section}>
-            <h2 style={styles.sectionTitle}>Quick Emergency Dial</h2>
-            <div style={styles.emergencyGrid}>
-              {emergencyTypes.map((service) => (
-                <div
-                  key={service.id}
-                  style={{
-                    ...styles.emergencyCard,
-                    borderColor: selectedEmergency === service.id ? service.color : "#E0E0E0",
-                    backgroundColor: selectedEmergency === service.id ? `${service.color}10` : "white",
-                  }}
-                  onClick={() => setSelectedEmergency(service.id)}
+        {/* Safety Tips */}
+        <Text style={styles.sectionTitle}>Safety Tips</Text>
+        {safetyTips.map((tip) => (
+          <View key={tip.id} style={styles.tipCard}>
+            <View style={styles.tipNumber}>
+              <Text style={{ color: "white", fontWeight: "bold" }}>{tip.id}</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.tipTitle}>{tip.title}</Text>
+              <Text style={styles.tipDesc}>{tip.description}</Text>
+            </View>
+          </View>
+        ))}
+
+        {/* Recent Emergencies */}
+        <Text style={styles.sectionTitle}>Recent Emergency Reports</Text>
+        {recentEmergencies.map((item) => (
+          <View key={item.id} style={styles.recentItem}>
+            <View style={styles.recentIcon}>
+              <Ionicons name="megaphone" size={20} color="#666" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <View style={styles.recentHeader}>
+                <Text style={styles.recentType}>{item.type}</Text>
+                <View
+                  style={[
+                    styles.statusBadge,
+                    {
+                      backgroundColor:
+                        item.status === "Resolved" ? "#D4EDDA" : "#FFF3CD",
+                    },
+                  ]}
                 >
-                  <div style={styles.emergencyIcon}>{service.icon}</div>
-                  <h3 style={styles.emergencyName}>{service.name}</h3>
-                  <p style={styles.emergencyNumber}>{service.number}</p>
-                  <p style={styles.emergencyDescription}>{service.description}</p>
-                  <button
+                  <Text
                     style={{
-                      ...styles.callButton,
-                      backgroundColor: service.color,
-                    }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleEmergencyCall(service);
+                      color: item.status === "Resolved" ? "#155724" : "#856404",
+                      fontWeight: "600",
+                      fontSize: 12,
                     }}
                   >
-                    <Ionicons name="call" size={20} color="white" />
-                    <span style={styles.callButtonText}>Call Now</span>
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
+                    {item.status}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.recentDetails}>
+                <Text style={styles.recentText}>
+                  📍 {item.location}
+                </Text>
+                <Text style={styles.recentText}>🕐 {item.time}</Text>
+              </View>
+            </View>
+          </View>
+        ))}
 
-          {/* Safety Tips */}
-          <div style={styles.section}>
-            <h2 style={styles.sectionTitle}>Safety Tips</h2>
-            <div style={styles.tipsGrid}>
-              {safetyTips.map((tip) => (
-                <div key={tip.id} style={styles.tipCard}>
-                  <div style={styles.tipNumber}>{tip.id}</div>
-                  <div style={styles.tipContent}>
-                    <h4 style={styles.tipTitle}>{tip.title}</h4>
-                    <p style={styles.tipDescription}>{tip.description}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Recent Emergencies */}
-          <div style={styles.section}>
-            <h2 style={styles.sectionTitle}>Recent Emergency Reports</h2>
-            <div style={styles.recentList}>
-              {recentEmergencies.map((emergency) => (
-                <div key={emergency.id} style={styles.recentItem}>
-                  <div style={styles.recentIcon}>
-                    <Ionicons name="megaphone" size={20} color="#666" />
-                  </div>
-                  <div style={styles.recentContent}>
-                    <div style={styles.recentHeader}>
-                      <h4 style={styles.recentType}>{emergency.type}</h4>
-                      <span
-                        style={{
-                          ...styles.statusBadge,
-                          backgroundColor: emergency.status === "Resolved" ? "#D4EDDA" : "#FFF3CD",
-                          color: emergency.status === "Resolved" ? "#155724" : "#856404",
-                        }}
-                      >
-                        {emergency.status}
-                      </span>
-                    </div>
-                    <div style={styles.recentDetails}>
-                      <span style={styles.recentLocation}>
-                        <Ionicons name="location" size={14} color="#999" />
-                        {emergency.location}
-                      </span>
-                      <span style={styles.recentTime}>
-                        <Ionicons name="time" size={14} color="#999" />
-                        {emergency.time}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Important Note */}
-          <div style={styles.noteCard}>
-            <div style={styles.noteIcon}>⚠️</div>
-            <div style={styles.noteContent}>
-              <h4 style={styles.noteTitle}>Important Reminder</h4>
-              <p style={styles.noteText}>
-                Only call emergency services for genuine emergencies. False reports may be subject to penalties and delay help to those in real need.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+        {/* Important Note */}
+        <View style={styles.noteCard}>
+          <Text style={styles.noteIcon}>⚠️</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.noteTitle}>Important Reminder</Text>
+            <Text style={styles.noteText}>
+              Only call emergency services for genuine emergencies. False reports may result in penalties and delay help for others.
+            </Text>
+          </View>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
-const styles = {
-  safeArea: {
-    width: "100%",
-    height: "100vh",
-    backgroundColor: "#F5F7FA",
-    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-    overflow: "hidden",
-  },
-  container: {
-    width: "100%",
-    height: "100%",
-    display: "flex",
-    flexDirection: "column",
-    backgroundColor: "white",
-  },
-  headercon: {
-    padding: 20,
-    display: "flex",
+const styles = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: "#F5F7FA" },
+  header: {
     flexDirection: "row",
     alignItems: "center",
+    padding: 16,
     backgroundColor: "#F5F6FA",
-    borderBottom: "1px solid #E0E0E0",
-    flexShrink: 0,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E0E0E0",
   },
-  backButton: {
-    background: "none",
-    border: "none",
-    cursor: "pointer",
-    padding: 8,
-    marginRight: 12,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  headerText: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#333",
-    margin: 0,
-  },
-  scrollContent: {
-    flex: 1,
-    overflowY: "auto",
-    overflowX: "hidden",
-    padding: "20px 20px",
-  },
+  backButton: { marginRight: 12, padding: 8 },
+  headerText: { fontSize: 22, fontWeight: "700", color: "#333" },
+  scrollContent: { padding: 16, paddingBottom: 40 },
   alertBanner: {
-    display: "flex",
     flexDirection: "row",
-    gap: 16,
-    padding: 20,
     backgroundColor: "#FFEBEE",
+    borderColor: "#FF5252",
+    borderWidth: 2,
     borderRadius: 16,
-    border: "2px solid #FF5252",
-    marginBottom: 28,
+    padding: 16,
+    alignItems: "center",
+    marginBottom: 24,
   },
-  alertIcon: {
-    flexShrink: 0,
-  },
-  alertContent: {
-    flex: 1,
-  },
-  alertTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#C62828",
-    margin: "0 0 6px 0",
-  },
-  alertText: {
-    fontSize: 14,
-    color: "#D32F2F",
-    margin: 0,
-    lineHeight: 1.6,
-  },
-  section: {
-    marginBottom: 32,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#1A1A1A",
-    marginBottom: 16,
-  },
-  emergencyGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-    gap: 16,
+  alertTitle: { fontSize: 16, fontWeight: "700", color: "#C62828", marginBottom: 4 },
+  alertText: { color: "#D32F2F", fontSize: 13, lineHeight: 18 },
+  sectionTitle: { fontSize: 20, fontWeight: "700", color: "#1A1A1A", marginVertical: 12 },
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    gap: 10,
   },
   emergencyCard: {
-    padding: 20,
+    width: "48%",
+    borderWidth: 2,
     borderRadius: 16,
-    border: "2px solid #E0E0E0",
-    textAlign: "center",
-    cursor: "pointer",
-    transition: "all 0.3s ease",
-    display: "flex",
-    flexDirection: "column",
+    padding: 16,
     alignItems: "center",
+    marginBottom: 14,
   },
-  emergencyIcon: {
-    fontSize: 48,
-    marginBottom: 12,
-  },
-  emergencyName: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#1A1A1A",
-    margin: "0 0 4px 0",
-  },
-  emergencyNumber: {
-    fontSize: 24,
-    fontWeight: "800",
-    color: "#333",
-    margin: "0 0 8px 0",
-  },
-  emergencyDescription: {
-    fontSize: 12,
-    color: "#666",
-    margin: "0 0 16px 0",
-    lineHeight: 1.4,
-  },
+  icon: { fontSize: 42, marginBottom: 8 },
+  emergencyName: { fontWeight: "700", fontSize: 16, color: "#1A1A1A" },
+  emergencyNumber: { fontWeight: "800", fontSize: 20, color: "#333" },
+  emergencyDesc: { color: "#666", fontSize: 12, textAlign: "center", marginVertical: 6 },
   callButton: {
-    width: "100%",
-    padding: "10px 20px",
-    border: "none",
-    borderRadius: 10,
-    display: "flex",
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    cursor: "pointer",
-    transition: "all 0.2s ease",
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    marginTop: 4,
   },
-  callButtonText: {
-    color: "white",
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  tipsGrid: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 12,
-  },
+  callButtonText: { color: "white", fontWeight: "700", marginLeft: 6 },
   tipCard: {
-    display: "flex",
-    gap: 16,
-    padding: 18,
+    flexDirection: "row",
     backgroundColor: "#F9FAFB",
     borderRadius: 12,
-    border: "1px solid #E5E7EB",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    padding: 14,
+    marginBottom: 10,
   },
   tipNumber: {
-    width: 36,
-    height: 36,
-    borderRadius: "50%",
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: "#667eea",
-    color: "white",
-    display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    fontSize: 18,
-    fontWeight: "700",
-    flexShrink: 0,
+    marginRight: 10,
   },
-  tipContent: {
-    flex: 1,
-  },
-  tipTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#1A1A1A",
-    margin: "0 0 4px 0",
-  },
-  tipDescription: {
-    fontSize: 14,
-    color: "#666",
-    margin: 0,
-    lineHeight: 1.5,
-  },
-  recentList: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 12,
-  },
+  tipTitle: { fontWeight: "700", fontSize: 15, color: "#1A1A1A" },
+  tipDesc: { color: "#666", fontSize: 13 },
   recentItem: {
-    display: "flex",
-    gap: 16,
-    padding: 16,
+    flexDirection: "row",
     backgroundColor: "#F9FAFB",
     borderRadius: 12,
-    border: "1px solid #E5E7EB",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    padding: 14,
+    marginBottom: 10,
   },
   recentIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: "white",
-    display: "flex",
+    width: 36,
+    height: 36,
+    backgroundColor: "#fff",
+    borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
-    flexShrink: 0,
-  },
-  recentContent: {
-    flex: 1,
+    marginRight: 10,
   },
   recentHeader: {
-    display: "flex",
-    alignItems: "center",
+    flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 8,
+    marginBottom: 4,
   },
-  recentType: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#1A1A1A",
-    margin: 0,
-  },
-  statusBadge: {
-    padding: "4px 12px",
-    borderRadius: 12,
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  recentDetails: {
-    display: "flex",
-    gap: 16,
-  },
-  recentLocation: {
-    fontSize: 13,
-    color: "#666",
-    display: "flex",
-    alignItems: "center",
-    gap: 4,
-  },
-  recentTime: {
-    fontSize: 13,
-    color: "#666",
-    display: "flex",
-    alignItems: "center",
-    gap: 4,
-  },
+  recentType: { fontWeight: "700", color: "#1A1A1A", fontSize: 15 },
+  recentDetails: { flexDirection: "row", gap: 12 },
+  recentText: { color: "#666", fontSize: 13 },
+  statusBadge: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2 },
   noteCard: {
-    display: "flex",
-    gap: 16,
-    padding: 20,
+    flexDirection: "row",
     backgroundColor: "#FFF9E6",
+    borderColor: "#FFE082",
+    borderWidth: 1,
     borderRadius: 16,
-    border: "1px solid #FFE082",
-    marginBottom: 20,
+    padding: 16,
+    marginTop: 20,
   },
-  noteIcon: {
-    fontSize: 32,
-    flexShrink: 0,
-  },
-  noteContent: {
-    flex: 1,
-  },
-  noteTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#F57C00",
-    margin: "0 0 6px 0",
-  },
-  noteText: {
-    fontSize: 14,
-    color: "#E65100",
-    margin: 0,
-    lineHeight: 1.6,
-  },
-};
+  noteIcon: { fontSize: 28, marginRight: 10 },
+  noteTitle: { fontWeight: "700", fontSize: 15, color: "#F57C00" },
+  noteText: { color: "#E65100", fontSize: 13, lineHeight: 18 },
+});

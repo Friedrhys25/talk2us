@@ -1,27 +1,21 @@
-import { useState, useRef } from "react";
-
-const Ionicons = ({ name, size, color }) => {
-  const iconMap = {
-    "arrow-back": "←",
-    "document-text-outline": "📄",
-    "camera-outline": "📷",
-    "location-outline": "📍",
-    "person-outline": "👤",
-    "call-outline": "📞",
-    "mail-outline": "✉️",
-    "send": "➤",
-    "time-outline": "🕐",
-    "checkmark-circle": "✓",
-    "alert-circle-outline": "⚠️"
-  };
-  return (
-    <span style={{ fontSize: size, lineHeight: 1 }}>
-      {iconMap[name] || "•"}
-    </span>
-  );
-};
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  TextInput,
+  ScrollView,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+  Image,
+} from "react-native";
+import * as ImagePicker from "expo-image-picker";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 
 export default function ComplaintsPage() {
+  const router = useRouter();
+
   const [formData, setFormData] = useState({
     name: "",
     contact: "",
@@ -33,24 +27,9 @@ export default function ComplaintsPage() {
   });
 
   const [selectedCategory, setSelectedCategory] = useState(null);
-  const [selectedFiles, setSelectedFiles] = useState([]);
-  const [showSuccess, setShowSuccess] = useState(false);
+  const [selectedImages, setSelectedImages] = useState([]);
   const [recentComplaints, setRecentComplaints] = useState([]);
-  const fileInputRef = useRef(null);
-
-  const handleFileSelect = (event) => {
-    const files = Array.from(event.target.files);
-    const validFiles = files.filter(file => {
-      const isValidType = file.type.startsWith('image/');
-      const isValidSize = file.size <= 5 * 1024 * 1024; // 5MB
-      return isValidType && isValidSize;
-    });
-    setSelectedFiles(validFiles);
-  };
-
-  const handleChooseFiles = () => {
-    fileInputRef.current?.click();
-  };
+  const [showSuccess, setShowSuccess] = useState(false);
 
   const categories = [
     { id: 1, name: "Road Issues", icon: "🚧", color: "#FF6B6B" },
@@ -70,62 +49,60 @@ export default function ComplaintsPage() {
     { id: 15, name: "Others", icon: "📋", color: "#95A5A6" },
   ];
 
-  const handleSubmit = () => {
-    // Validation
-    const errors = [];
-    
-    if (!selectedCategory) {
-      errors.push("Please select a complaint category");
-    }
-    
-    if (selectedCategory === 15 && !formData.customCategory.trim()) {
-      errors.push("Please specify your complaint type");
-    }
-    
-    if (!formData.name.trim()) {
-      errors.push("Please enter your full name");
-    }
-    
-    if (!formData.contact.trim()) {
-      errors.push("Please enter your contact number");
-    }
-    
-    if (!formData.location.trim()) {
-      errors.push("Please enter the location");
-    }
-    
-    if (!formData.description.trim()) {
-      errors.push("Please provide a description of your complaint");
-    }
-    if (selectedFiles.length === 0) {
-      errors.push("Please upload at least one photo as proof");
-    }
-    
-    // Show errors if any
-    if (errors.length > 0) {
-      alert("Please complete the following:\n\n" + errors.map((err, i) => `${i + 1}. ${err}`).join("\n"));
+  // Pick image from gallery
+  const handleChooseFiles = async () => {
+    const permissionResult =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (permissionResult.granted === false) {
+      Alert.alert("Permission required", "Please allow photo access.");
       return;
     }
-    
-    // Create new complaint
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsMultipleSelection: true,
+      quality: 0.8,
+    });
+
+    if (!result.canceled) {
+      const newImages = result.assets.map((a) => a.uri);
+      setSelectedImages([...selectedImages, ...newImages]);
+    }
+  };
+
+  const handleSubmit = () => {
+    const errors = [];
+    if (!selectedCategory) errors.push("Please select a complaint category");
+    if (selectedCategory === 15 && !formData.customCategory.trim())
+      errors.push("Please specify your complaint type");
+    if (!formData.name.trim()) errors.push("Please enter your full name");
+    if (!formData.contact.trim()) errors.push("Please enter your contact number");
+    if (!formData.location.trim()) errors.push("Please enter the location");
+    if (!formData.description.trim())
+      errors.push("Please provide a description");
+    if (selectedImages.length === 0)
+      errors.push("Please upload at least one photo as proof");
+
+    if (errors.length > 0) {
+      Alert.alert("Incomplete Form", errors.join("\n"));
+      return;
+    }
+
     const newComplaint = {
       id: Date.now(),
-      title: selectedCategory === 15 ? formData.customCategory : formData.category,
+      title:
+        selectedCategory === 15
+          ? formData.customCategory
+          : formData.category,
       status: "Pending",
       date: "Just now",
       location: formData.location,
-      description: formData.description
+      description: formData.description,
     };
-    
-    // Add to recent complaints at the beginning
+
     setRecentComplaints([newComplaint, ...recentComplaints]);
-    
-    // Submit successful
-    console.log("Form submitted:", formData);
-    console.log("Files:", selectedFiles);
     setShowSuccess(true);
-    
-    // Hide success message after 3 seconds and reset form
+
     setTimeout(() => {
       setShowSuccess(false);
       setFormData({
@@ -138,608 +115,317 @@ export default function ComplaintsPage() {
         description: "",
       });
       setSelectedCategory(null);
-      setSelectedFiles([]);
+      setSelectedImages([]);
     }, 3000);
   };
 
   return (
-    <div style={styles.safeArea}>
-      <div style={styles.container}>
-        {/* Header */}
-        <div style={styles.headercon}>
-          <button style={styles.backButton}
-          onClick={() => window.history.back()}>
-            <Ionicons name="arrow-back" size={24} color="#333" />
-          </button>
-          <h1 style={styles.headerText}>File a Complaint</h1>
-        </div>
+    <View style={styles.safeArea}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color="#333" />
+        </TouchableOpacity>
+        <Text style={styles.headerText}>File a Complaint</Text>
+      </View>
 
-        {/* Success Message Overlay */}
-        {showSuccess && (
-          <div style={styles.successOverlay}>
-            <div style={styles.successCard}>
-              <div style={styles.successIcon}>✅</div>
-              <h2 style={styles.successTitle}>Complaint Submitted!</h2>
-              <p style={styles.successMessage}>
-                Your complaint has been successfully submitted. We'll get back to you soon.
-              </p>
-            </div>
-          </div>
+      <ScrollView style={styles.scroll}>
+        {/* Info Card */}
+        <View style={styles.infoCard}>
+          <Ionicons name="alert-circle-outline" size={28} color="#4A90E2" />
+          <View style={{ flex: 1, marginLeft: 10 }}>
+            <Text style={styles.infoTitle}>How it works</Text>
+            <Text style={styles.infoText}>
+              Submit your complaint and we'll assign it to the relevant
+              department. Track your complaint status anytime.
+            </Text>
+          </View>
+        </View>
+
+        {/* Category Selection */}
+        <Text style={styles.sectionTitle}>Select Category</Text>
+        <View style={styles.categoryGrid}>
+          {categories.map((cat) => (
+            <TouchableOpacity
+              key={cat.id}
+              style={[
+                styles.categoryCard,
+                {
+                  borderColor:
+                    selectedCategory === cat.id ? cat.color : "#E0E0E0",
+                  backgroundColor:
+                    selectedCategory === cat.id ? `${cat.color}22` : "white",
+                },
+              ]}
+              onPress={() => {
+                setSelectedCategory(cat.id);
+                setFormData({
+                  ...formData,
+                  category: cat.name,
+                  customCategory: "",
+                });
+              }}
+            >
+              <Text style={styles.categoryIcon}>{cat.icon}</Text>
+              <Text style={styles.categoryName}>{cat.name}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {selectedCategory === 15 && (
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Specify Complaint Type *</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Please specify your complaint type..."
+              value={formData.customCategory}
+              onChangeText={(text) =>
+                setFormData({ ...formData, customCategory: text })
+              }
+            />
+          </View>
         )}
 
-        <div style={styles.scrollContent}>
-          {/* Info Card */}
-          <div style={styles.infoCard}>
-            <div style={styles.infoIcon}>
-              <Ionicons name="alert-circle-outline" size={28} color="#4A90E2" />
-            </div>
-            <div style={styles.infoContent}>
-              <h3 style={styles.infoTitle}>How it works</h3>
-              <p style={styles.infoText}>
-                Submit your complaint and we'll assign it to the relevant department. Track your complaint status in real-time.
-              </p>
-            </div>
-          </div>
+        {/* Form Fields */}
+        <Text style={styles.sectionTitle}>Your Information</Text>
 
-          {/* Category Selection */}
-          <div style={styles.section}>
-            <h2 style={styles.sectionTitle}>Select Category</h2>
-            <div style={styles.categoryGrid}>
-              {categories.map((category) => (
-                <div
-                  key={category.id}
-                  style={{
-                    ...styles.categoryCard,
-                    borderColor: selectedCategory === category.id ? category.color : "#E0E0E0",
-                    backgroundColor: selectedCategory === category.id ? `${category.color}15` : "white",
-                  }}
-                  onClick={() => {
-                    setSelectedCategory(category.id);
-                    setFormData({ ...formData, category: category.name, customCategory: "" });
-                  }}
-                >
-                  <div style={styles.categoryIcon}>{category.icon}</div>
-                  <p style={styles.categoryName}>{category.name}</p>
-                </div>
-              ))}
-            </div>
-            
-            {/* Custom Category Input for "Others" */}
-            {selectedCategory === 15 && (
-              <div style={styles.customCategoryContainer}>
-                <label style={styles.label}>
-                  <Ionicons name="document-text-outline" size={18} color="#666" />
-                  <span style={styles.labelText}>Specify Complaint Type *</span>
-                </label>
-                <input
-                  style={styles.input}
-                  type="text"
-                  placeholder="Please specify your complaint type..."
-                  value={formData.customCategory}
-                  onChange={(e) => setFormData({ ...formData, customCategory: e.target.value })}
-                />
-              </div>
-            )}
-          </div>
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>Full Name *</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter your full name"
+            value={formData.name}
+            onChangeText={(text) => setFormData({ ...formData, name: text })}
+          />
+        </View>
 
-          {/* Form Section */}
-          <div style={styles.section}>
-            <h2 style={styles.sectionTitle}>Your Information</h2>
-            
-            <div style={styles.formGroup}>
-              <label style={styles.label}>
-                <Ionicons name="person-outline" size={18} color="#666" />
-                <span style={styles.labelText}>Full Name *</span>
-              </label>
-              <input
-                style={styles.input}
-                type="text"
-                placeholder="Enter your full name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              />
-            </div>
+        <View style={styles.row}>
+          <View style={[styles.formGroup, { flex: 1 }]}>
+            <Text style={styles.label}>Contact *</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="09XX XXX XXXX"
+              value={formData.contact}
+              keyboardType="phone-pad"
+              onChangeText={(text) => setFormData({ ...formData, contact: text })}
+            />
+          </View>
 
-            <div style={styles.formRow}>
-              <div style={{ ...styles.formGroup, flex: 1 }}>
-                <label style={styles.label}>
-                  <Ionicons name="call-outline" size={18} color="#666" />
-                  <span style={styles.labelText}>Contact *</span>
-                </label>
-                <input
-                  style={styles.input}
-                  type="tel"
-                  placeholder="09XX XXX XXXX"
-                  value={formData.contact}
-                  onChange={(e) => setFormData({ ...formData, contact: e.target.value })}
-                />
-              </div>
+          <View style={[styles.formGroup, { flex: 1 }]}>
+            <Text style={styles.label}>Email</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="your@email.com"
+              value={formData.email}
+              keyboardType="email-address"
+              onChangeText={(text) => setFormData({ ...formData, email: text })}
+            />
+          </View>
+        </View>
 
-              <div style={{ ...styles.formGroup, flex: 1 }}>
-                <label style={styles.label}>
-                  <Ionicons name="mail-outline" size={18} color="#666" />
-                  <span style={styles.labelText}>Email</span>
-                </label>
-                <input
-                  style={styles.input}
-                  type="email"
-                  placeholder="your@email.com"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                />
-              </div>
-            </div>
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>Exact Location *</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Street, Barangay, City"
+            value={formData.location}
+            onChangeText={(text) => setFormData({ ...formData, location: text })}
+          />
+        </View>
 
-            <div style={styles.formGroup}>
-              <label style={styles.label}>
-                <Ionicons name="location-outline" size={18} color="#666" />
-                <span style={styles.labelText}>Exact Location *</span>
-              </label>
-              <input
-                style={styles.input}
-                type="text"
-                placeholder="Street, Purok, Barangay, City"
-                value={formData.location}
-                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-              />
-            </div>
-          </div>
+        <Text style={styles.sectionTitle}>Complaint Details</Text>
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>Description *</Text>
+          <TextInput
+            style={[styles.input, { height: 100, textAlignVertical: "top" }]}
+            placeholder="Please describe your complaint in detail..."
+            multiline
+            value={formData.description}
+            onChangeText={(text) =>
+              setFormData({ ...formData, description: text })
+            }
+          />
+        </View>
 
-          {/* Complaint Details */}
-          <div style={styles.section}>
-            <h2 style={styles.sectionTitle}>Complaint Details</h2>
-            
-            <div style={styles.formGroup}>
-              <label style={styles.label}>
-                <Ionicons name="document-text-outline" size={18} color="#666" />
-                <span style={styles.labelText}>Description *</span>
-              </label>
-              <textarea
-                style={styles.textarea}
-                placeholder="Please describe your complaint in detail..."
-                rows={5}
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              />
-            </div>
+        {/* Upload Section */}
+        <View style={styles.uploadBox}>
+          <Ionicons name="camera-outline" size={32} color="#999" />
+          <Text style={styles.uploadText}>Upload Photos (Proof)</Text>
+          <TouchableOpacity
+            onPress={handleChooseFiles}
+            style={styles.uploadButton}
+          >
+            <Text style={{ color: "#333", fontWeight: "600" }}>Choose Files</Text>
+          </TouchableOpacity>
 
-            <div style={styles.uploadSection}>
-              <div style={styles.uploadBox}>
-                <Ionicons name="camera-outline" size={32} color="#999" />
-                <p style={styles.uploadText}>Upload Photos (Proof)</p>
-                <p style={styles.uploadSubtext}>JPG, PNG - Max 5MB</p>
-                
-                {/* Hidden file input */}
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handleFileSelect}
-                  style={{ display: 'none' }}
-                />
-                
-                <button 
-                  style={styles.uploadButton} 
-                  type="button"
-                  onClick={handleChooseFiles}
-                >
-                  Choose Files
-                </button>
-                
-                {/* Display selected files */}
-                {selectedFiles.length > 0 && (
-                  <div style={styles.selectedFilesContainer}>
-                    <p style={styles.selectedFilesText}>
-                      {selectedFiles.length} file{selectedFiles.length > 1 ? 's' : ''} selected
-                    </p>
-                    <div style={styles.fileList}>
-                      {selectedFiles.map((file, index) => (
-                        <div key={index} style={styles.fileItem}>
-                          <span style={styles.fileName}>📎 {file.name}</span>
-                          <button
-                            style={styles.removeFileButton}
-                            onClick={() => setSelectedFiles(selectedFiles.filter((_, i) => i !== index))}
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Submit Button */}
-          <button style={styles.submitButton} onClick={handleSubmit}>
-            <span style={styles.submitText}>Submit Complaint</span>
-            <Ionicons name="send" size={20} color="white" />
-          </button>
-
-          {/* Recent Complaints */}
-          {recentComplaints.length > 0 && (
-            <div style={styles.section}>
-              <h2 style={styles.sectionTitle}>Your Recent Complaints</h2>
-              <div style={styles.recentList}>
-                {recentComplaints.map((complaint) => (
-                  <div key={complaint.id} style={styles.recentItem}>
-                    <div style={styles.recentIcon}>
-                      <Ionicons name="document-text-outline" size={20} color="#666" />
-                    </div>
-                    <div style={styles.recentContent}>
-                      <p style={styles.recentTitle}>{complaint.title}</p>
-                      <div style={styles.recentFooter}>
-                        <span style={styles.recentDate}>
-                          <Ionicons name="time-outline" size={14} color="#999" />
-                          {complaint.date}
-                        </span>
-                        <span
-                          style={{
-                            ...styles.statusBadge,
-                            backgroundColor: complaint.status === "Resolved" ? "#D4EDDA" : 
-                                            complaint.status === "In Progress" ? "#FFF3CD" : "#F8D7DA",
-                            color: complaint.status === "Resolved" ? "#155724" : 
-                                  complaint.status === "In Progress" ? "#856404" : "#721C24",
-                          }}
-                        >
-                          {complaint.status}
-                        </span>
-                      </div>
-                    </div>
-                    <button style={styles.viewButton}>View</button>
-                  </div>
+          {selectedImages.length > 0 && (
+            <View style={{ marginTop: 10 }}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                {selectedImages.map((uri, idx) => (
+                  <Image
+                    key={idx}
+                    source={{ uri }}
+                    style={{ width: 80, height: 80, borderRadius: 10, marginRight: 10 }}
+                  />
                 ))}
-              </div>
-            </div>
+              </ScrollView>
+            </View>
           )}
-        </div>
-      </div>
-    </div>
+        </View>
+
+        {/* Submit Button */}
+        <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
+          <Text style={styles.submitText}>Submit Complaint</Text>
+          <Ionicons name="send" size={20} color="white" />
+        </TouchableOpacity>
+
+        {/* Recent Complaints */}
+        {recentComplaints.length > 0 && (
+          <View>
+            <Text style={styles.sectionTitle}>Your Recent Complaints</Text>
+            {recentComplaints.map((c) => (
+              <View key={c.id} style={styles.recentItem}>
+                <Ionicons name="document-text-outline" size={22} color="#666" />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.recentTitle}>{c.title}</Text>
+                  <Text style={styles.recentSub}>{c.date} • {c.status}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+      </ScrollView>
+
+      {showSuccess && (
+        <View style={styles.successOverlay}>
+          <View style={styles.successCard}>
+            <Text style={styles.successIcon}>✅</Text>
+            <Text style={styles.successTitle}>Complaint Submitted!</Text>
+            <Text style={styles.successMsg}>
+              Your complaint has been successfully submitted.
+            </Text>
+          </View>
+        </View>
+      )}
+    </View>
   );
 }
 
-const styles = {
-  safeArea: {
-    width: "100%",
-    height: "100vh",
-    backgroundColor: "#F5F7FA",
-    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-    overflow: "hidden",
-  },
-  container: {
-    width: "100%",
-    height: "100%",
-    display: "flex",
-    flexDirection: "column",
-    backgroundColor: "white",
-    position: "relative",
-  },
-  headercon: {
-    padding: 20,
-    display: "flex",
+const styles = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: "#F5F7FA" },
+  header: {
     flexDirection: "row",
     alignItems: "center",
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E0E0E0",
     backgroundColor: "#F5F6FA",
-    borderBottom: "1px solid #E0E0E0",
-    flexShrink: 0,
   },
-  backButton: {
-    background: "none",
-    border: "none",
-    cursor: "pointer",
-    padding: 8,
-    marginRight: 12,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  headerText: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#333",
-    margin: 0,
-  },
-  scrollContent: {
-    flex: 1,
-    overflowY: "auto",
-    overflowX: "hidden",
-    padding: "20px 20px",
-  },
-  successOverlay: {
-    position: "fixed",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 1000,
-    padding: "20px",
-  },
-  successCard: {
-    backgroundColor: "white",
-    borderRadius: 24,
-    padding: "40px 32px",
-    maxWidth: "400px",
-    width: "100%",
-    textAlign: "center",
-    boxShadow: "0 20px 60px rgba(0, 0, 0, 0.3)",
-    animation: "slideIn 0.3s ease-out",
-  },
-  successIcon: {
-    fontSize: 64,
-    marginBottom: 20,
-  },
-  successTitle: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#1A1A1A",
-    margin: "0 0 12px 0",
-  },
-  successMessage: {
-    fontSize: 16,
-    color: "#4A5568",
-    lineHeight: 1.6,
-    margin: 0,
-  },
+  backButton: { padding: 6, marginRight: 8 },
+  headerText: { fontSize: 22, fontWeight: "700", color: "#333" },
+  scroll: { padding: 16 },
   infoCard: {
-    display: "flex",
     flexDirection: "row",
-    gap: 16,
-    padding: 20,
-    backgroundColor: "#EBF5FF",
+    padding: 16,
     borderRadius: 16,
-    border: "1px solid #B3D9FF",
-    marginBottom: 28,
+    backgroundColor: "#EBF5FF",
+    borderWidth: 1,
+    borderColor: "#B3D9FF",
+    marginBottom: 24,
   },
-  infoIcon: {
-    flexShrink: 0,
-  },
-  infoContent: {
-    flex: 1,
-  },
-  infoTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#1A1A1A",
-    margin: "0 0 6px 0",
-  },
-  infoText: {
-    fontSize: 14,
-    color: "#4A5568",
-    margin: 0,
-    lineHeight: 1.6,
-  },
-  section: {
-    marginBottom: 32,
-  },
+  infoTitle: { fontWeight: "700", fontSize: 16 },
+  infoText: { color: "#555", marginTop: 4 },
   sectionTitle: {
     fontSize: 20,
     fontWeight: "700",
+    marginBottom: 12,
     color: "#1A1A1A",
-    marginBottom: 16,
   },
   categoryGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
-    gap: 12,
-    maxHeight: "400px",
-    overflowY: "auto",
-    padding: "4px",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    marginBottom: 16,
   },
   categoryCard: {
+    width: "30%",
+    borderWidth: 2,
+    borderRadius: 12,
+    padding: 14,
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  categoryIcon: { fontSize: 28 },
+  categoryName: { fontWeight: "600", color: "#333", fontSize: 13, marginTop: 4 },
+  formGroup: { marginBottom: 16 },
+  label: { fontWeight: "600", color: "#333", marginBottom: 6 },
+  input: {
+    borderWidth: 2,
+    borderColor: "#E0E0E0",
+    borderRadius: 10,
+    padding: 10,
+    backgroundColor: "white",
+  },
+  row: { flexDirection: "row", gap: 12 },
+  uploadBox: {
     padding: 20,
-    borderRadius: 16,
-    border: "2px solid #E0E0E0",
-    textAlign: "center",
-    cursor: "pointer",
-    transition: "all 0.3s ease",
-  },
-  categoryIcon: {
-    fontSize: 36,
-    marginBottom: 8,
-  },
-  categoryName: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#333",
-    margin: 0,
-  },
-  customCategoryContainer: {
-    marginTop: 16,
-  },
-  formGroup: {
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "#CBD5E0",
+    borderStyle: "dashed",
+    borderRadius: 12,
+    backgroundColor: "#F7FAFC",
     marginBottom: 20,
   },
-  formRow: {
-    display: "flex",
-    gap: 16,
-    flexWrap: "wrap",
-  },
-  label: {
-    display: "flex",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 8,
-  },
-  labelText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#333",
-  },
-  input: {
-    width: "100%",
-    padding: "14px 16px",
-    fontSize: 15,
-    border: "2px solid #E0E0E0",
-    borderRadius: 12,
-    outline: "none",
-    transition: "border-color 0.3s ease",
-    boxSizing: "border-box",
-  },
-  textarea: {
-    width: "100%",
-    padding: "14px 16px",
-    fontSize: 15,
-    border: "2px solid #E0E0E0",
-    borderRadius: 12,
-    outline: "none",
-    transition: "border-color 0.3s ease",
-    fontFamily: "inherit",
-    resize: "vertical",
-    boxSizing: "border-box",
-  },
-  uploadSection: {
-    marginTop: 16,
-  },
-  uploadBox: {
-    padding: 40,
-    border: "2px dashed #CBD5E0",
-    borderRadius: 16,
-    textAlign: "center",
-    backgroundColor: "#F7FAFC",
-  },
-  uploadText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#333",
-    margin: "12px 0 4px",
-  },
-  uploadSubtext: {
-    fontSize: 13,
-    color: "#999",
-    margin: "0 0 16px",
-  },
+  uploadText: { marginTop: 8, fontWeight: "600", color: "#333" },
   uploadButton: {
-    padding: "10px 24px",
-    backgroundColor: "white",
-    border: "2px solid #E0E0E0",
+    marginTop: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderWidth: 2,
+    borderColor: "#E0E0E0",
     borderRadius: 8,
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#333",
-    cursor: "pointer",
-    transition: "all 0.3s ease",
-  },
-  selectedFilesContainer: {
-    marginTop: 16,
-  },
-  selectedFilesText: {
-    fontSize: 14,
-    color: "#333",
-    fontWeight: "600",
-    marginBottom: 8,
-  },
-  fileList: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 8,
-  },
-  fileItem: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: "8px 12px",
     backgroundColor: "white",
-    borderRadius: 8,
-    border: "1px solid #E0E0E0",
-  },
-  fileName: {
-    fontSize: 13,
-    color: "#333",
-  },
-  removeFileButton: {
-    background: "none",
-    border: "none",
-    color: "#E74C3C",
-    fontSize: 18,
-    cursor: "pointer",
-    padding: "0 8px",
   },
   submitButton: {
-    width: "100%",
-    padding: 18,
-    background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-    border: "none",
+    backgroundColor: "#667EEA",
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
     borderRadius: 16,
-    color: "white",
-    fontSize: 16,
-    fontWeight: "700",
-    cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-    marginBottom: 32,
-    transition: "transform 0.2s ease",
-  },
-  submitText: {
-    fontSize: 16,
-  },
-  recentList: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 12,
-  },
-  recentItem: {
-    display: "flex",
-    alignItems: "center",
-    gap: 16,
     padding: 16,
-    backgroundColor: "#F9FAFB",
-    borderRadius: 12,
-    border: "1px solid #E5E7EB",
+    marginBottom: 24,
+    gap: 8,
   },
-  recentIcon: {
-    width: 40,
-    height: 40,
+  submitText: { color: "white", fontWeight: "700", fontSize: 16 },
+  recentItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: "#F9FAFB",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
     borderRadius: 10,
-    backgroundColor: "white",
-    display: "flex",
+    padding: 12,
+    marginBottom: 8,
+  },
+  recentTitle: { fontWeight: "600", color: "#1A1A1A" },
+  recentSub: { color: "#666", fontSize: 13 },
+  successOverlay: {
+    position: "absolute",
+    top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.5)",
     alignItems: "center",
     justifyContent: "center",
-    flexShrink: 0,
   },
-  recentContent: {
-    flex: 1,
-  },
-  recentTitle: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#1A1A1A",
-    margin: "0 0 6px 0",
-  },
-  recentFooter: {
-    display: "flex",
-    alignItems: "center",
-    gap: 12,
-  },
-  recentDate: {
-    fontSize: 13,
-    color: "#999",
-    display: "flex",
-    alignItems: "center",
-    gap: 4,
-  },
-  statusBadge: {
-    padding: "4px 12px",
-    borderRadius: 12,
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  viewButton: {
-    padding: "8px 16px",
+  successCard: {
     backgroundColor: "white",
-    border: "2px solid #E0E0E0",
-    borderRadius: 8,
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#333",
-    cursor: "pointer",
-    flexShrink: 0,
+    padding: 30,
+    borderRadius: 20,
+    alignItems: "center",
+    width: "80%",
   },
-};
+  successIcon: { fontSize: 50, marginBottom: 10 },
+  successTitle: { fontSize: 20, fontWeight: "700", color: "#333" },
+  successMsg: { color: "#555", textAlign: "center", marginTop: 6 },
+});

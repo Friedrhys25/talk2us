@@ -60,7 +60,6 @@ export default function FeedbackPage() {
   const handleSubmit = () => {
     setSubmitted(true);
 
-    // You can log or send the data here
     console.log("Ratings:", ratings);
     console.log("Comments per official:", comments);
     console.log("Additional Feedback:", feedback);
@@ -113,14 +112,14 @@ export default function FeedbackPage() {
         <View style={styles.container}>
           <View style={styles.headercon}>
             <TouchableOpacity
-            style={styles.backButton}
-              onClick={() => window.history.back()}>
+              style={styles.backButton}
               onPress={() => router.back()}
-            
+            >
               <Text style={styles.backIcon}>←</Text>
             </TouchableOpacity>
             <Text style={styles.headerText}>Feedback</Text>
           </View>
+
           <View style={styles.successContainer}>
             <Text style={styles.successIcon}>✅</Text>
             <Text style={styles.successTitle}>Thank you!</Text>
@@ -244,14 +243,8 @@ export default function FeedbackPage() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: "#F5F7FA",
-  },
-  container: {
-    flex: 1,
-    backgroundColor: "white",
-  },
+  safeArea: { flex: 1, backgroundColor: "#F5F7FA" },
+  container: { flex: 1, backgroundColor: "white" },
   headercon: {
     padding: 20,
     flexDirection: "row",
@@ -260,22 +253,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#E0E0E0",
   },
-  backButton: {
-    padding: 8,
-    marginRight: 12,
-  },
-  backIcon: {
-    fontSize: 24,
-    color: "#333",
-  },
-  headerText: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#333",
-  },
-  scrollContent: {
-    padding: 20,
-  },
+  backButton: { padding: 8, marginRight: 12 },
+  backIcon: { fontSize: 24, color: "#333" },
+  headerText: { fontSize: 24, fontWeight: "700", color: "#333" },
+  scrollContent: { padding: 20 },
   infoCard: {
     flexDirection: "row",
     gap: 16,
@@ -287,35 +268,12 @@ const styles = StyleSheet.create({
     marginBottom: 28,
     alignItems: "flex-start",
   },
-  infoContent: {
-    flex: 1,
-  },
-  infoTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#1A1A1A",
-    marginBottom: 6,
-  },
-  infoText: {
-    fontSize: 14,
-    color: "#4A5568",
-    lineHeight: 20,
-  },
-  section: {
-    marginBottom: 32,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#1A1A1A",
-    marginBottom: 4,
-  },
-  sectionSubtitle: {
-    fontSize: 14,
-    color: "#6B7280",
-    marginBottom: 20,
-    fontWeight: "400",
-  },
+  infoContent: { flex: 1 },
+  infoTitle: { fontSize: 16, fontWeight: "700", color: "#1A1A1A", marginBottom: 6 },
+  infoText: { fontSize: 14, color: "#4A5568", lineHeight: 20 },
+  section: { marginBottom: 32 },
+  sectionTitle: { fontSize: 20, fontWeight: "700", color: "#1A1A1A", marginBottom: 4 },
+  sectionSubtitle: { fontSize: 14, color: "#6B7280", marginBottom: 20 },
   officialCard: {
     backgroundColor: "#F9FAFB",
     borderRadius: 16,
@@ -324,11 +282,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E5E7EB",
   },
-  officialHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 16,
-  },
+  officialHeader: { flexDirection: "row", alignItems: "center", marginBottom: 16 },
   officialIconContainer: {
     width: 44,
     height: 44,
@@ -338,21 +292,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginRight: 14,
   },
-  officialName: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#1A1A1A",
-    flex: 1,
-  },
-  starsContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 8,
-  },
-  star: {
-    fontSize: 32,
-    padding: 4,
-  },
+  officialName: { fontSize: 16, fontWeight: "600", color: "#1A1A1A", flex: 1 },
+  starsContainer: { flexDirection: "row", justifyContent: "center", gap: 8 },
+  star: { fontSize: 32, padding: 4 },
   commentInput: {
     marginTop: 10,
     borderWidth: 1,
@@ -370,20 +312,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E5E7EB",
   },
-  textInputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 12,
-  },
-  inputIcon: {
-    marginTop: 2,
-  },
-  feedbackLabel: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#333",
-  },
+  textInputContainer: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 },
+  feedbackLabel: { fontSize: 14, fontWeight: "600", color: "#333" },
   textInput: {
     borderWidth: 2,
     borderColor: "#E0E0E0",
@@ -404,31 +334,9 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     marginBottom: 40,
   },
-  submitButtonText: {
-    color: "#ffffff",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  successContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 40,
-  },
-  successIcon: {
-    fontSize: 80,
-    marginBottom: 20,
-  },
-  successTitle: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: "#1A1A1A",
-    marginBottom: 12,
-  },
-  successMessage: {
-    fontSize: 16,
-    color: "#6B7280",
-    textAlign: "center",
-    lineHeight: 24,
-  },
+  submitButtonText: { color: "#ffffff", fontSize: 16, fontWeight: "700" },
+  successContainer: { flex: 1, justifyContent: "center", alignItems: "center", padding: 40 },
+  successIcon: { fontSize: 80, marginBottom: 20 },
+  successTitle: { fontSize: 28, fontWeight: "700", color: "#1A1A1A", marginBottom: 12 },
+  successMessage: { fontSize: 16, color: "#6B7280", textAlign: "center", lineHeight: 24 },
 });
