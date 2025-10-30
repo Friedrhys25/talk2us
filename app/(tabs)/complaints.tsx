@@ -26,9 +26,16 @@ export default function ComplaintsPage() {
     description: "",
   });
 
-  const [selectedCategory, setSelectedCategory] = useState(null);
-  const [selectedImages, setSelectedImages] = useState([]);
-  const [recentComplaints, setRecentComplaints] = useState([]);
+  const [selectedImages, setSelectedImages] = useState<string[]>([]);
+  const [recentComplaints, setRecentComplaints] = useState<
+    { id: number; 
+      title: string; 
+      status: string; 
+      date: string; 
+      location: string; 
+      description: string }[]>([]);
+      
+  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
 
   const categories = [

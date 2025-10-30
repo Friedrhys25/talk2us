@@ -10,7 +10,7 @@ export default function MessagesPage() {
     { id: 2, sender: "user", text: "Good day! I just want to report a broken streetlight." },
   ]);
   const [newMessage, setNewMessage] = useState("");
-  const scrollViewRef = useRef(null);
+  const scrollViewRef = useRef<ScrollView>(null);
 
   const sendMessage = () => {
     if (!newMessage.trim()) return;

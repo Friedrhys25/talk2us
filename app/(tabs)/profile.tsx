@@ -11,28 +11,35 @@ import {
 import { useRouter } from "expo-router";
 
 // ✅ Emoji-based Ionicons (no dependency)
-const Ionicons = ({ name, size, color }) => {
-  const iconMap = {
-    "arrow-back": "←",
-    "person-circle": "👤",
-    "person-outline": "👤",
-    "mail-outline": "✉️",
-    "call-outline": "📞",
-    "location-outline": "📍",
-    "calendar-outline": "📅",
-    "settings-outline": "⚙️",
-    "notifications-outline": "🔔",
-    "shield-outline": "🛡️",
-    "help-circle-outline": "❓",
-    "log-out-outline": "🚪",
-    "create-outline": "✏️",
-    "document-text-outline": "📄",
-    "checkmark-circle": "✓",
-    "time-outline": "🕐",
-    "trophy-outline": "🏆",
-    "close": "✕",
-  };
-  return <Text style={{ fontSize: size, color }}>{iconMap[name] || "•"}</Text>;
+type IoniconsProps = {
+  name: keyof typeof iconMap | string;
+  size: number;
+  color?: string;
+};
+
+const iconMap : { [key: string]: string } = {
+  "arrow-back": "←",
+  "person-circle": "👤",
+  "person-outline": "👤",
+  "mail-outline": "✉️",
+  "call-outline": "📞",
+  "location-outline": "📍",
+  "calendar-outline": "📅",
+  "settings-outline": "⚙️",
+  "notifications-outline": "🔔",
+  "shield-outline": "🛡️",
+  "help-circle-outline": "❓",
+  "log-out-outline": "🚪",
+  "create-outline": "✏️",
+  "document-text-outline": "📄",
+  "checkmark-circle": "✓",
+  "time-outline": "🕐",
+  "trophy-outline": "🏆",
+  close: "✕",
+};
+
+const Ionicons: React.FC<IoniconsProps> = ({ name, size, color = "#000" }) => {
+  return <Text style={{ fontSize: size, color }}>{iconMap[name]}</Text>;
 };
 
 export default function ProfilePage() {

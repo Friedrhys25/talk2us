@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -13,10 +13,20 @@ import {
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { Picker } from "@react-native-picker/picker";
+import * as WebBrowser from "expo-web-browser";
+import * as Google from "expo-auth-session/providers/google";
+import * as AppleAuthentication from "expo-apple-authentication";
+import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
+import { ref, set } from "firebase/database";
+import { auth, db } from "../backend/firebaseConfig";
+
+// Required for Google sign-in to complete properly
+WebBrowser.maybeCompleteAuthSession();
 
 export default function RegisterPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [address, setAddress] = useState("");
   const [purok, setPurok] = useState("1");
   const [age, setAge] = useState("");
@@ -24,6 +34,22 @@ export default function RegisterPage() {
   const [idImage, setIdImage] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
 
+  // Google Auth setup
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    androidClientId: "YOUR_ANDROID_CLIENT_ID.apps.googleusercontent.com",
+    iosClientId: "https://talk2kap-f73a0.firebaseapp.com/__/auth/handler",
+    webClientId: "897405877837-160fj4ma3h5m0cslkq5tolb580vlhlde.apps.googleusercontent.com",
+  });
+
+  useEffect(() => {
+    if (response?.type === "success") {
+      const { authentication } = response;
+      console.log("Google Auth Success:", authentication);
+      setModalVisible(true);
+    }
+  }, [response]);
+
+  // Pick image
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -37,8 +63,40 @@ export default function RegisterPage() {
     }
   };
 
-  const handleRegister = () => {
-    setModalVisible(true);
+  // Email register
+  const handleRegister = async () => {
+    if (!email || !password) {
+      alert("Please fill in all fields!");
+      return;
+    }
+
+    try {
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+
+      const user = userCredential.user;
+
+      // Update display name
+      await updateProfile(user, { displayName: name });
+
+      // Save data to Realtime DB
+      await set(ref(db, "users/" + user.uid), {
+        name,
+        email,
+        address,
+        purok,
+        age,
+        number,
+        idImage: idImage || null,
+      });
+
+      setModalVisible(true);
+    } catch (error: any) {
+      alert(error.message);
+    }
   };
 
   return (
@@ -58,10 +116,18 @@ export default function RegisterPage() {
 
         <TextInput
           style={styles.input}
-          placeholder="Email (will be username)"
+          placeholder="Email"
           value={email}
           onChangeText={setEmail}
           keyboardType="email-address"
+        />
+
+        <TextInput
+          style={styles.input}
+          placeholder="Password"
+          secureTextEntry
+          value={password}
+          onChangeText={setPassword}
         />
 
         <TextInput
@@ -83,7 +149,6 @@ export default function RegisterPage() {
             <Picker.Item label="Purok 3" value="3" />
             <Picker.Item label="Purok 4" value="4" />
             <Picker.Item label="Purok 5" value="5" />
-            <Picker.Item label="Purok 6" value="6" />
           </Picker>
         </View>
 
@@ -112,10 +177,43 @@ export default function RegisterPage() {
         {idImage && <Image source={{ uri: idImage }} style={styles.idImage} />}
 
         <TouchableOpacity style={styles.registerButton} onPress={handleRegister}>
-          <Text style={styles.registerButtonText}>Register</Text>
+          <Text style={styles.registerButtonText}>Register with Email</Text>
         </TouchableOpacity>
 
-        {/* Floating Modal */}
+        {/* Google Sign In */}
+        <TouchableOpacity
+          style={[styles.registerButton, { backgroundColor: "#DB4437" }]}
+          disabled={!request}
+          onPress={() => promptAsync()}
+        >
+          <Text style={styles.registerButtonText}>Sign in with Google</Text>
+        </TouchableOpacity>
+
+        {/* Apple Sign In */}
+        {Platform.OS === "ios" && (
+          <AppleAuthentication.AppleAuthenticationButton
+            buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+            buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+            cornerRadius={8}
+            style={{ width: "100%", height: 50, marginTop: 12 }}
+            onPress={async () => {
+              try {
+                const credential = await AppleAuthentication.signInAsync({
+                  requestedScopes: [
+                    AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+                    AppleAuthentication.AppleAuthenticationScope.EMAIL,
+                  ],
+                });
+                console.log("Apple login success:", credential);
+                setModalVisible(true);
+              } catch (e: any) {
+                if (e.code === "ERR_CANCELED") return;
+                alert("Apple Sign-In failed");
+              }
+            }}
+          />
+        )}
+
         <Modal
           animationType="fade"
           transparent={true}
@@ -151,7 +249,6 @@ const styles = StyleSheet.create({
     fontSize: 40,
     fontWeight: "bold",
     marginBottom: 20,
-    
   },
   input: {
     width: "100%",
@@ -175,9 +272,7 @@ const styles = StyleSheet.create({
     padding: 8,
     fontWeight: "bold",
   },
-  picker: {
-    width: "100%",
-  },
+  picker: { width: "100%" },
   imageButton: {
     padding: 12,
     borderRadius: 8,
@@ -203,6 +298,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#2ecc71",
     alignItems: "center",
     width: "100%",
+    marginTop: 10,
   },
   registerButtonText: {
     color: "#fff",

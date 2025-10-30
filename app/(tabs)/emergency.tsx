@@ -11,9 +11,16 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 
+
+type IoniconsProps = {
+  name: string;
+  size: number;
+  color: string;
+};
+
 // ✅ Emoji-based icons (can replace with @expo/vector-icons)
-const Ionicons = ({ name, size, color }) => {
-  const iconMap = {
+const Ionicons = ({ name, size, color }: IoniconsProps) => {
+  const iconMap: Record<string, string> = {
     "arrow-back": "←",
     "alert-circle": "🚨",
     "call": "📞",
@@ -28,7 +35,8 @@ const Ionicons = ({ name, size, color }) => {
 
 export default function EmergencyPage() {
   const router = useRouter();
-  const [selectedEmergency, setSelectedEmergency] = useState(null);
+  const [selectedEmergency, setSelectedEmergency] = useState<number | null>(null);
+
 
   const emergencyTypes = [
     { id: 1, name: "Police", icon: "🛡️", number: "100", color: "#4A90E2", description: "Crime, security threats" },
@@ -51,7 +59,16 @@ export default function EmergencyPage() {
     { id: 3, title: "Follow Instructions", description: "Listen carefully to emergency responders." },
   ];
 
-  const handleEmergencyCall = (service) => {
+  type EmergencyService = {
+    id: number;
+    name: string;
+    icon: string;
+    number: string;
+    color: string;
+    description: string;
+  };
+
+  const handleEmergencyCall = (service: EmergencyService) => {
     Alert.alert(
       "Call Emergency",
       `Call ${service.name} at ${service.number}?`,

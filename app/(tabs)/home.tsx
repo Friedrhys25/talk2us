@@ -6,92 +6,93 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 
-// ✅ Custom Ionicons replacement using emojis
-const Ionicons = ({ name, size, color }) => {
-  const iconMap = {
-    "mail-outline": "✉️",
-    "alert-circle-outline": "🚨",
-    "analytics-outline": "📊",
-    "people-outline": "👤",
-    "shield-outline": "🛡️",
-    "medical-outline": "🏥",
-    "flame-outline": "🔥",
-    "chevron-forward": "→",
-    "chatbubble-outline": "💬"
-  };
-  return (
-    <Text style={{ fontSize: size, color, lineHeight: size }}>
-      {iconMap[name] || "•"}
-    </Text>
-  );
+// ✅ Define a TypeScript interface for Ionicons
+interface IoniconsProps {
+  name: keyof typeof iconMap;
+  size: number;
+  color: string;
+}
+
+// ✅ Move iconMap above to use in type
+const iconMap = {
+  "mail-outline": "✉️",
+  "alert-circle-outline": "🚨",
+  "analytics-outline": "📊",
+  "people-outline": "👤",
+  "shield-outline": "🛡️",
+  "medical-outline": "🏥",
+  "flame-outline": "🔥",
+  "chevron-forward": "→",
+  "chatbubble-outline": "💬",
 };
+
+// ✅ Typed Ionicons component
+const Ionicons = ({ name, size, color }: IoniconsProps) => (
+  <Text style={{ fontSize: size, color, lineHeight: size }}>
+    {iconMap[name] || "•"}
+  </Text>
+);
+
+// ✅ Define types for service items
+interface Service {
+  id: number;
+  name: string;
+  icon: keyof typeof iconMap;
+  gradient: readonly [string, string];
+  route: string;
+  description?: string;
+}
 
 export default function HomePage() {
   const router = useRouter();
-  const [activeCard, setActiveCard] = useState(null);
+  const [activeCard, setActiveCard] = useState<number | null>(null);
   const scrollY = useRef(new Animated.Value(0)).current;
 
-  const services = [
+  const services: Service[] = [
     {
       id: 1,
       name: "Complaints",
       icon: "mail-outline",
-      gradient: ["#FF6B6B", "#FF8E8E"],
+      gradient: ["#FF6B6B", "#FF8E8E"] as const,
       route: "/complaints",
     },
     {
       id: 2,
       name: "Emergency",
       icon: "alert-circle-outline",
-      gradient: ["#FF6B6B", "#FF8E8E"],
+      gradient: ["#FF6B6B", "#FF8E8E"] as const,
       route: "/emergency",
     },
     {
       id: 3,
       name: "Feedback",
       icon: "analytics-outline",
-      gradient: ["#FF6B6B", "#FF8E8E"],
+      gradient: ["#FF6B6B", "#FF8E8E"] as const,
       route: "/feedback",
     },
     {
       id: 4,
       name: "Profile",
       icon: "people-outline",
-      gradient: ["#FF6B6B", "#FF8E8E"],
+      gradient: ["#FF6B6B", "#FF8E8E"] as const,
       route: "/profile",
     },
     {
       id: 5,
       name: "Messages",
       icon: "chatbubble-outline",
-      gradient: ["#FF6B6B", "#FF8E8E"],
+      gradient: ["#FF6B6B", "#FF8E8E"] as const,
       route: "/messages",
     },
   ];
 
-  const handleServiceClick = (id) => {
-    switch (id) {
-      case 1:
-        router.push("/complaints");
-        break;
-      case 2:
-        router.push("/emergency");
-        break;
-      case 3:
-        router.push("/feedback");
-        break;
-      case 4:
-        router.push("/profile");
-        break;
-      case 5:
-        router.push("/messages");
-        break;
-      default:
-        console.warn("No route found for this service");
-    }
+  const handleServiceClick = (id: number) => {
+    const route = services.find((s) => s.id === id)?.route;
+    if (route) router.push(route as any);
+    else console.warn("No route found for this service");
   };
 
   const parallaxTranslate = scrollY.interpolate({
@@ -157,13 +158,16 @@ export default function HomePage() {
                 >
                   <Ionicons name={service.icon} size={48} color="#fff" />
                   <Text style={styles.cardLabel}>{service.name}</Text>
-                  <Text style={styles.cardDesc}>{service.description}</Text>
-                  <Ionicons
-                    name="chevron-forward"
-                    size={40}
-                    color="rgba(255,255,255,0.8)"
-                    style={styles.arrowIcon}
-                  />
+                  {service.description && (
+                    <Text style={styles.cardDesc}>{service.description}</Text>
+                  )}
+                  <View style={styles.arrowContainer}>
+                    <Ionicons
+                      name="chevron-forward"
+                      size={32}
+                      color="rgba(255,255,255,0.8)"
+                    />
+                  </View>
                 </LinearGradient>
               </TouchableOpacity>
             ))}
@@ -194,9 +198,15 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     justifyContent: "flex-end",
   },
-  parallaxBackground: { ...StyleSheet.absoluteFillObject, backgroundColor: "#667eea" },
-  overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.2)" },
-  headerContent: { padding: 20 }, 
+  parallaxBackground: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "#667eea",
+  },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.2)",
+  },
+  headerContent: { padding: 20 },
   badge: {
     alignSelf: "flex-start",
     backgroundColor: "rgba(255,255,255,0.25)",
@@ -221,13 +231,17 @@ const styles = StyleSheet.create({
   },
   sectionTitle: { fontSize: 20, fontWeight: "700", color: "#1A1A1A" },
   sectionSubtitle: { fontSize: 13, color: "#6B7280", marginBottom: 16 },
-  grid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" },
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+  },
   card: {
-    width: "18%",
+    width: "48%",
     aspectRatio: 1,
-    borderRadius: 50,
+    borderRadius: 20,
     overflow: "hidden",
-    marginBottom: 5,
+    marginBottom: 16,
     shadowColor: "#000",
     shadowOpacity: 0.1,
     shadowOffset: { width: 0, height: 2 },
@@ -242,14 +256,18 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   activeCard: { transform: [{ scale: 0.95 }] },
-  cardLabel: { color: "#fff", fontSize: 20, fontWeight: "700", marginTop: 6 },
+  cardLabel: { color: "#fff", fontSize: 18, fontWeight: "700", marginTop: 6 },
   cardDesc: {
     color: "rgba(255,255,255,0.9)",
     fontSize: 11,
     textAlign: "center",
     marginTop: 2,
   },
-  arrowIcon: { position: "absolute", bottom: 6, right: 6 },
+  arrowContainer: {
+    position: "absolute",
+    bottom: 6,
+    right: 6,
+  },
   featureCard: {
     backgroundColor: "#FFF9E6",
     borderRadius: 18,

@@ -11,9 +11,36 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
+// 🧩 Types
+type OfficialKey =
+  | "captain"
+  | "councilor1"
+  | "councilor2"
+  | "councilor3"
+  | "councilor4"
+  | "councilor5"
+  | "councilor6"
+  | "councilor7";
+
+type RatingsType = Record<OfficialKey, number>;
+type CommentsType = Record<OfficialKey, string>;
+
+type Official = {
+  key: OfficialKey;
+  name: string;
+  icon: keyof typeof Ionicons.glyphMap; // ensures valid Ionicons name
+};
+
+type RatingStarsProps = {
+  official: OfficialKey;
+  currentRating: number;
+  handleRating: (official: OfficialKey, rating: number) => void;
+};
+
 export default function FeedbackPage() {
   const router = useRouter();
-  const [ratings, setRatings] = useState({
+
+  const [ratings, setRatings] = useState<RatingsType>({
     captain: 0,
     councilor1: 0,
     councilor2: 0,
@@ -24,7 +51,7 @@ export default function FeedbackPage() {
     councilor7: 0,
   });
 
-  const [comments, setComments] = useState({
+  const [comments, setComments] = useState<CommentsType>({
     captain: "",
     councilor1: "",
     councilor2: "",
@@ -38,7 +65,7 @@ export default function FeedbackPage() {
   const [feedback, setFeedback] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
-  const officials = [
+  const officials: Official[] = [
     { key: "captain", name: "Barangay Captain", icon: "person" },
     { key: "councilor1", name: "Councilor 1", icon: "people" },
     { key: "councilor2", name: "Councilor 2", icon: "people" },
@@ -49,17 +76,16 @@ export default function FeedbackPage() {
     { key: "councilor7", name: "Councilor 7", icon: "people" },
   ];
 
-  const handleRating = (official, rating) => {
+  const handleRating = (official: OfficialKey, rating: number) => {
     setRatings({ ...ratings, [official]: rating });
   };
 
-  const handleComment = (official, text) => {
+  const handleComment = (official: OfficialKey, text: string) => {
     setComments({ ...comments, [official]: text });
   };
 
   const handleSubmit = () => {
     setSubmitted(true);
-
     console.log("Ratings:", ratings);
     console.log("Comments per official:", comments);
     console.log("Additional Feedback:", feedback);
@@ -90,7 +116,11 @@ export default function FeedbackPage() {
     }, 3000);
   };
 
-  const RatingStars = ({ official, currentRating }) => {
+  const RatingStars = ({
+    official,
+    currentRating,
+    handleRating,
+  }: RatingStarsProps) => {
     return (
       <View style={styles.starsContainer}>
         {[1, 2, 3, 4, 5].map((star) => (
@@ -136,7 +166,6 @@ export default function FeedbackPage() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        {/* Header */}
         <View style={styles.headercon}>
           <TouchableOpacity
             style={styles.backButton}
@@ -151,7 +180,6 @@ export default function FeedbackPage() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* Info Card */}
           <View style={styles.infoCard}>
             <Ionicons
               name="information-circle-outline"
@@ -167,7 +195,6 @@ export default function FeedbackPage() {
             </View>
           </View>
 
-          {/* Officials Rating Section */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Rate Officials</Text>
             <Text style={styles.sectionSubtitle}>
@@ -185,9 +212,9 @@ export default function FeedbackPage() {
                 <RatingStars
                   official={official.key}
                   currentRating={ratings[official.key]}
+                  handleRating={handleRating}
                 />
 
-                {/* Individual comment box */}
                 <TextInput
                   style={styles.commentInput}
                   placeholder={`Write a comment for ${official.name} (optional)...`}
@@ -202,7 +229,6 @@ export default function FeedbackPage() {
             ))}
           </View>
 
-          {/* General Feedback Section */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Additional Comments</Text>
             <Text style={styles.sectionSubtitle}>
@@ -231,7 +257,6 @@ export default function FeedbackPage() {
             </View>
           </View>
 
-          {/* Submit Button */}
           <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
             <Text style={styles.submitButtonText}>Submit Feedback</Text>
             <Ionicons name="send" size={18} color="white" />
@@ -241,6 +266,7 @@ export default function FeedbackPage() {
     </SafeAreaView>
   );
 }
+
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: "#F5F7FA" },
@@ -253,6 +279,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#E0E0E0",
   },
+  inputIcon: {
+  width: 20,
+  height: 20,
+  marginRight: 10,
+},
+
   backButton: { padding: 8, marginRight: 12 },
   backIcon: { fontSize: 24, color: "#333" },
   headerText: { fontSize: 24, fontWeight: "700", color: "#333" },
