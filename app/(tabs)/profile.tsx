@@ -120,185 +120,60 @@ export default function ProfilePage() {
 
   // Upload ID verification image
   const handleUploadID = async () => {
-    try {
-      // Request permissions
-      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      
-      if (!permissionResult.granted) {
-        Alert.alert(
-          "Permission Required", 
-          "Please allow access to your photos to upload ID. Go to Settings > Talk2us > Photos to enable access."
-        );
-        return;
-      }
-
-      // Pick image
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.8,
-      });
-
-      if (result.canceled) {
-        return;
-      }
-
-      // Validate image selection
-      if (!result.assets || result.assets.length === 0) {
-        Alert.alert("Error", "No image was selected. Please try again.");
-        return;
-      }
-
-      setUploading(true);
-
-      const currentUser = auth.currentUser;
-      if (!currentUser) {
-        Alert.alert("Authentication Error", "No user logged in. Please log in and try again.");
-        setUploading(false);
-        return;
-      }
-
-      const imageUri = result.assets[0].uri;
-      
-      // Validate image URI
-      if (!imageUri) {
-        throw new Error("Invalid image URI");
-      }
-
-      console.log("📤 Starting ID upload for user:", currentUser.uid);
-      
-      // Convert image to blob
-      let response;
-      let blob;
-      
-      try {
-        response = await fetch(imageUri);
-        if (!response.ok) {
-          throw new Error("Failed to fetch image data");
-        }
-        blob = await response.blob();
-      } catch (fetchError) {
-        console.error("❌ Fetch error:", fetchError);
-        throw new Error("Failed to read image file. Please try selecting a different image.");
-      }
-
-      // Validate blob
-      if (!blob || blob.size === 0) {
-        throw new Error("Selected image is empty or corrupted");
-      }
-
-      // Check file size (limit to 5MB)
-      const maxSize = 5 * 1024 * 1024; // 5MB in bytes
-      if (blob.size > maxSize) {
-        Alert.alert(
-          "File Too Large", 
-          "The selected image is too large. Please select an image smaller than 5MB."
-        );
-        setUploading(false);
-        return;
-      }
-
-      console.log("📦 Image size:", (blob.size / 1024 / 1024).toFixed(2), "MB");
-
-      // Create storage reference
-      const fileName = `id_verification_${currentUser.uid}_${Date.now()}.jpg`;
-      const imageRef = storageRef(storage, `id_verifications/${fileName}`);
-
-      // Upload to Firebase Storage
-      console.log("☁️ Uploading to Firebase Storage...");
-      try {
-        await uploadBytes(imageRef, blob);
-        console.log("✅ Upload successful");
-      } catch (uploadError: any) {
-        console.error("❌ Upload error:", uploadError);
-        if (uploadError.code === "storage/unauthorized") {
-          throw new Error("You don't have permission to upload files. Please contact support.");
-        } else if (uploadError.code === "storage/canceled") {
-          throw new Error("Upload was canceled. Please try again.");
-        } else if (uploadError.code === "storage/unknown") {
-          throw new Error("Upload failed due to network issues. Please check your connection and try again.");
-        }
-        throw new Error("Failed to upload image to server. Please try again.");
-      }
-      
-      // Get download URL
-      console.log("🔗 Getting download URL...");
-      let downloadURL;
-      try {
-        downloadURL = await getDownloadURL(imageRef);
-        console.log("✅ Download URL retrieved");
-      } catch (urlError: any) {
-        console.error("❌ Get URL error:", urlError);
-        throw new Error("Failed to generate image link. Please try again.");
-      }
-
-      // Update Realtime Database
-      console.log("💾 Updating database...");
-      try {
-        const userRef = ref(db, `users/${currentUser.uid}`);
-        await update(userRef, {
-          id_verification: downloadURL,
-          id_verification_uploaded_at: new Date().toISOString(),
-        });
-        console.log("✅ Database updated");
-      } catch (dbError: any) {
-        console.error("❌ Database error:", dbError);
-        throw new Error("Failed to save verification data. Please try again.");
-      }
-
-      // Update local state
-      setUserData(prev => ({
-        ...prev,
-        id_verification: downloadURL,
-      }));
-
+  try {
+    // Request permission to access photos
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permissionResult.granted) {
       Alert.alert(
-        "Success! ✅", 
-        "Your ID has been uploaded successfully and is now being verified."
+        "Permission Required",
+        "Please allow photo access to upload your ID."
       );
-      
-    } catch (error: any) {
-      console.error("❌ Error uploading ID:", error);
-      
-      let errorTitle = "Upload Failed";
-      let errorMessage = "Failed to upload ID verification. Please try again.";
-
-      if (error.message) {
-        errorMessage = error.message;
-      } else if (error.code) {
-        // Handle specific Firebase error codes
-        switch (error.code) {
-          case "storage/unauthorized":
-            errorTitle = "Permission Denied";
-            errorMessage = "You don't have permission to upload files. Please contact support.";
-            break;
-          case "storage/canceled":
-            errorTitle = "Upload Canceled";
-            errorMessage = "The upload was canceled. Please try again.";
-            break;
-          case "storage/unknown":
-            errorTitle = "Network Error";
-            errorMessage = "Upload failed due to a network error. Please check your internet connection and try again.";
-            break;
-          case "storage/quota-exceeded":
-            errorTitle = "Storage Limit Reached";
-            errorMessage = "Storage limit has been exceeded. Please contact support.";
-            break;
-          case "storage/unauthenticated":
-            errorTitle = "Authentication Required";
-            errorMessage = "Please log out and log back in, then try again.";
-            break;
-          default:
-            errorMessage = `Error: ${error.code}. Please try again or contact support.`;
-        }
-      }
-
-      Alert.alert(errorTitle, errorMessage);
-    } finally {
-      setUploading(false);
+      return;
     }
-  };
+
+    // Pick image
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 1,
+    });
+
+    if (result.canceled || !result.assets?.length) {
+      return;
+    }
+
+    const selectedUri = result.assets[0].uri;
+    const currentUser = auth.currentUser;
+
+    if (!currentUser) {
+      Alert.alert("Error", "You must be logged in to upload an ID.");
+      return;
+    }
+
+    setUploading(true);
+
+    // 💾 Save image URI directly to Realtime Database
+    const userRef = ref(db, `users/${currentUser.uid}`);
+    await update(userRef, {
+      id_verification: selectedUri, // only local URI
+      id_verification_uploaded_at: new Date().toISOString(),
+    });
+
+    setUserData((prev) => ({
+      ...prev,
+      id_verification: selectedUri,
+    }));
+
+    Alert.alert("Success", "Your ID has been uploaded successfully!");
+  } catch (error) {
+    console.error("Error uploading ID:", error);
+    Alert.alert("Error", "Failed to upload ID. Please try again.");
+  } finally {
+    setUploading(false);
+  }
+};
+
 
   const stats = [
     { label: "Complaints Filed", value: "12", icon: "📋", color: "#4A90E2" },
