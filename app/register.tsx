@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -10,20 +10,18 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { Picker } from "@react-native-picker/picker";
-import * as WebBrowser from "expo-web-browser";
-import * as Google from "expo-auth-session/providers/google";
-import * as AppleAuthentication from "expo-apple-authentication";
-import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
-import { ref, set } from "firebase/database";
+import { useRouter } from "expo-router";
 import { auth, db } from "../backend/firebaseConfig";
-
-// Required for Google sign-in to complete properly
-WebBrowser.maybeCompleteAuthSession();
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { ref, set } from "firebase/database";
 
 export default function RegisterPage() {
+  const router = useRouter();
+
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -34,22 +32,7 @@ export default function RegisterPage() {
   const [idImage, setIdImage] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
 
-  // Google Auth setup
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    androidClientId: "YOUR_ANDROID_CLIENT_ID.apps.googleusercontent.com",
-    iosClientId: "https://talk2kap-f73a0.firebaseapp.com/__/auth/handler",
-    webClientId: "897405877837-160fj4ma3h5m0cslkq5tolb580vlhlde.apps.googleusercontent.com",
-  });
-
-  useEffect(() => {
-    if (response?.type === "success") {
-      const { authentication } = response;
-      console.log("Google Auth Success:", authentication);
-      setModalVisible(true);
-    }
-  }, [response]);
-
-  // Pick image
+  // Pick image (to follow upload later)
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -57,46 +40,80 @@ export default function RegisterPage() {
       aspect: [4, 4],
       quality: 1,
     });
-
     if (!result.canceled) {
       setIdImage(result.assets[0].uri);
     }
   };
 
-  // Email register
+  // Register user
   const handleRegister = async () => {
-    if (!email || !password) {
-      alert("Please fill in all fields!");
+    console.log("Register button pressed");
+
+    if (!email || !password || !name) {
+      Alert.alert("Missing fields", "Please fill in all required fields!");
+      return;
+    }
+
+    // Validate password length
+    if (password.length < 6) {
+      Alert.alert("Weak Password", "Password must be at least 6 characters long");
       return;
     }
 
     try {
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
-
+      console.log("Creating user with email:", email);
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
+      console.log("✅ User created successfully:", user.uid);
 
-      // Update display name
-      await updateProfile(user, { displayName: name });
-
-      // Save data to Realtime DB
-      await set(ref(db, "users/" + user.uid), {
+      // Save additional user data to Realtime Database
+      await set(ref(db, `users/${user.uid}`), {
         name,
         email,
         address,
         purok,
         age,
         number,
-        idImage: idImage || null,
+        idImage: null, // Will implement image upload later
+        createdAt: new Date().toISOString(),
       });
 
+      console.log("✅ User data saved to database");
       setModalVisible(true);
     } catch (error: any) {
-      alert(error.message);
+      console.error("❌ Firebase Error:", error.code, error.message);
+      
+      // Show user-friendly error messages
+      let errorMessage = "Something went wrong";
+      
+      switch (error.code) {
+        case "auth/email-already-in-use":
+          errorMessage = "This email is already registered";
+          break;
+        case "auth/weak-password":
+          errorMessage = "Password should be at least 6 characters";
+          break;
+        case "auth/invalid-email":
+          errorMessage = "Invalid email address";
+          break;
+        case "auth/operation-not-allowed":
+          errorMessage = "Email/Password sign-in is not enabled. Please contact support.";
+          break;
+        case "auth/network-request-failed":
+          errorMessage = "Network error. Please check your internet connection.";
+          break;
+        default:
+          errorMessage = error.message || "Registration failed";
+      }
+      
+      Alert.alert("Registration Error", errorMessage);
     }
+  };
+
+  // When OK is pressed, go back to index.tsx
+  const handleSuccessClose = () => {
+    setModalVisible(false);
+    router.push("/"); // goes back to index.tsx
   };
 
   return (
@@ -120,14 +137,16 @@ export default function RegisterPage() {
           value={email}
           onChangeText={setEmail}
           keyboardType="email-address"
+          autoCapitalize="none"
         />
 
         <TextInput
           style={styles.input}
-          placeholder="Password"
+          placeholder="Password (min 6 characters)"
           secureTextEntry
           value={password}
           onChangeText={setPassword}
+          autoCapitalize="none"
         />
 
         <TextInput
@@ -170,50 +189,17 @@ export default function RegisterPage() {
 
         <TouchableOpacity style={styles.imageButton} onPress={pickImage}>
           <Text style={styles.imageButtonText}>
-            {idImage ? "Change ID Picture" : "Upload ID Picture"}
+            {idImage ? "Change ID Picture" : "Upload ID Picture (Optional)"}
           </Text>
         </TouchableOpacity>
 
         {idImage && <Image source={{ uri: idImage }} style={styles.idImage} />}
 
         <TouchableOpacity style={styles.registerButton} onPress={handleRegister}>
-          <Text style={styles.registerButtonText}>Register with Email</Text>
+          <Text style={styles.registerButtonText}>Register</Text>
         </TouchableOpacity>
 
-        {/* Google Sign In */}
-        <TouchableOpacity
-          style={[styles.registerButton, { backgroundColor: "#DB4437" }]}
-          disabled={!request}
-          onPress={() => promptAsync()}
-        >
-          <Text style={styles.registerButtonText}>Sign in with Google</Text>
-        </TouchableOpacity>
-
-        {/* Apple Sign In */}
-        {Platform.OS === "ios" && (
-          <AppleAuthentication.AppleAuthenticationButton
-            buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
-            buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
-            cornerRadius={8}
-            style={{ width: "100%", height: 50, marginTop: 12 }}
-            onPress={async () => {
-              try {
-                const credential = await AppleAuthentication.signInAsync({
-                  requestedScopes: [
-                    AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
-                    AppleAuthentication.AppleAuthenticationScope.EMAIL,
-                  ],
-                });
-                console.log("Apple login success:", credential);
-                setModalVisible(true);
-              } catch (e: any) {
-                if (e.code === "ERR_CANCELED") return;
-                alert("Apple Sign-In failed");
-              }
-            }}
-          />
-        )}
-
+        {/* Success Modal */}
         <Modal
           animationType="fade"
           transparent={true}
@@ -222,10 +208,11 @@ export default function RegisterPage() {
         >
           <View style={styles.modalBackground}>
             <View style={styles.modalBox}>
-              <Text style={styles.modalText}>Wait for ID verification...</Text>
+              <Text style={styles.modalText}>✅ Registration Successful!</Text>
+              <Text style={styles.modalSubText}>You can now log in with your credentials</Text>
               <TouchableOpacity
                 style={styles.closeButton}
-                onPress={() => setModalVisible(false)}
+                onPress={handleSuccessClose}
               >
                 <Text style={styles.closeButtonText}>OK</Text>
               </TouchableOpacity>
@@ -312,20 +299,28 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.5)",
   },
   modalBox: {
-    width: 250,
-    padding: 20,
+    width: 280,
+    padding: 25,
     backgroundColor: "#fff",
     borderRadius: 10,
     alignItems: "center",
   },
   modalText: {
-    fontSize: 16,
-    marginBottom: 15,
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 10,
+    textAlign: "center",
+  },
+  modalSubText: {
+    fontSize: 14,
+    color: "#666",
+    marginBottom: 20,
+    textAlign: "center",
   },
   closeButton: {
     backgroundColor: "#3498db",
     paddingVertical: 10,
-    paddingHorizontal: 20,
+    paddingHorizontal: 30,
     borderRadius: 8,
   },
   closeButtonText: {
