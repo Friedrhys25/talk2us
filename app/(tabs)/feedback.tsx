@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   ScrollView,
   StyleSheet,
@@ -6,163 +6,129 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-
-// 🧩 Types
-type OfficialKey =
-  | "captain"
-  | "councilor1"
-  | "councilor2"
-  | "councilor3"
-  | "councilor4"
-  | "councilor5"
-  | "councilor6"
-  | "councilor7";
-
-type RatingsType = Record<OfficialKey, number>;
-type CommentsType = Record<OfficialKey, string>;
-
-type Official = {
-  key: OfficialKey;
-  name: string;
-  icon: keyof typeof Ionicons.glyphMap; // ensures valid Ionicons name
-};
-
-type RatingStarsProps = {
-  official: OfficialKey;
-  currentRating: number;
-  handleRating: (official: OfficialKey, rating: number) => void;
-};
+import { db } from "../../backend/firebaseConfig";
+import { ref, get, update } from "firebase/database"; // ✅ changed from push,set to update
 
 export default function FeedbackPage() {
   const router = useRouter();
-
-  const [ratings, setRatings] = useState<RatingsType>({
-    captain: 0,
-    councilor1: 0,
-    councilor2: 0,
-    councilor3: 0,
-    councilor4: 0,
-    councilor5: 0,
-    councilor6: 0,
-    councilor7: 0,
-  });
-
-  const [comments, setComments] = useState<CommentsType>({
-    captain: "",
-    councilor1: "",
-    councilor2: "",
-    councilor3: "",
-    councilor4: "",
-    councilor5: "",
-    councilor6: "",
-    councilor7: "",
-  });
-
+  const [officials, setOfficials] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [ratings, setRatings] = useState<Record<string, number>>({});
+  const [comments, setComments] = useState<Record<string, string>>({});
   const [feedback, setFeedback] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
-  const officials: Official[] = [
-    { key: "captain", name: "Barangay Captain", icon: "person" },
-    { key: "councilor1", name: "Councilor 1", icon: "people" },
-    { key: "councilor2", name: "Councilor 2", icon: "people" },
-    { key: "councilor3", name: "Councilor 3", icon: "people" },
-    { key: "councilor4", name: "Councilor 4", icon: "people" },
-    { key: "councilor5", name: "Councilor 5", icon: "people" },
-    { key: "councilor6", name: "Councilor 6", icon: "people" },
-    { key: "councilor7", name: "Councilor 7", icon: "people" },
-  ];
+  // ✅ Fetch officials from Firebase
+  useEffect(() => {
+    const fetchOfficials = async () => {
+      try {
+        const officialsRef = ref(db, "officials");
+        const snapshot = await get(officialsRef);
 
-  const handleRating = (official: OfficialKey, rating: number) => {
-    setRatings({ ...ratings, [official]: rating });
+        if (snapshot.exists()) {
+          const data = snapshot.val();
+          const officialsArray = Object.keys(data).map((key) => ({
+            id: key,
+            ...data[key],
+          }));
+          setOfficials(officialsArray);
+        }
+      } catch (error) {
+        console.error("Error fetching officials:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOfficials();
+  }, []);
+
+  const handleRating = (id: string, rating: number) => {
+    setRatings((prev) => ({ ...prev, [id]: rating }));
   };
 
-  const handleComment = (official: OfficialKey, text: string) => {
-    setComments({ ...comments, [official]: text });
+  const handleComment = (id: string, text: string) => {
+    setComments((prev) => ({ ...prev, [id]: text }));
   };
 
-  const handleSubmit = () => {
+  // ✅ Submit feedback to Firebase (per official)
+  const handleSubmit = async () => {
+  try {
+    // ✅ Loop through each official that has a rating
+    for (const id of Object.keys(ratings)) {
+      const officialRef = ref(db, `officials/${id}/feedback/${Date.now()}`);
+
+      const feedbackData = {
+        rating: ratings[id],
+        comment: comments[id] || "",
+        timestamp: Date.now(),
+      };
+
+      // ✅ Save the feedback as an object
+      await update(officialRef, feedbackData);
+    }
+
+    // ✅ Store general feedback separately if provided
+    if (feedback.trim()) {
+      const generalFeedbackRef = ref(db, `generalFeedback/${Date.now()}`);
+      const feedbackData = {
+        feedback,
+        timestamp: Date.now(),
+      };
+      await update(generalFeedbackRef, feedbackData);
+    }
+
     setSubmitted(true);
-    console.log("Ratings:", ratings);
-    console.log("Comments per official:", comments);
-    console.log("Additional Feedback:", feedback);
+    console.log("✅ Feedback saved successfully!");
+  } catch (error) {
+    console.error("Error saving feedback:", error);
+  }
 
-    setTimeout(() => {
-      setRatings({
-        captain: 0,
-        councilor1: 0,
-        councilor2: 0,
-        councilor3: 0,
-        councilor4: 0,
-        councilor5: 0,
-        councilor6: 0,
-        councilor7: 0,
-      });
-      setComments({
-        captain: "",
-        councilor1: "",
-        councilor2: "",
-        councilor3: "",
-        councilor4: "",
-        councilor5: "",
-        councilor6: "",
-        councilor7: "",
-      });
-      setFeedback("");
-      setSubmitted(false);
-    }, 3000);
-  };
+  // ✅ Reset after a short delay
+  setTimeout(() => {
+    setRatings({});
+    setComments({});
+    setFeedback("");
+    setSubmitted(false);
+  }, 3000);
+};
+
 
   const RatingStars = ({
-    official,
+    id,
     currentRating,
-    handleRating,
-  }: RatingStarsProps) => {
-    return (
-      <View style={styles.starsContainer}>
-        {[1, 2, 3, 4, 5].map((star) => (
-          <TouchableOpacity
-            key={star}
-            onPress={() => handleRating(official, star)}
-          >
-            <Text style={styles.star}>{star <= currentRating ? "⭐" : "☆"}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-    );
-  };
+  }: {
+    id: string;
+    currentRating: number;
+  }) => (
+    <View style={styles.starsContainer}>
+      {[1, 2, 3, 4, 5].map((star) => (
+        <TouchableOpacity key={star} onPress={() => handleRating(id, star)}>
+          <Text style={styles.star}>{star <= currentRating ? "⭐" : "☆"}</Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
 
-  // ✅ Success screen
   if (submitted) {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <View style={styles.container}>
-          <View style={styles.headercon}>
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={() => router.back()}
-            >
-              <Text style={styles.backIcon}>←</Text>
-            </TouchableOpacity>
-            <Text style={styles.headerText}>Feedback</Text>
-          </View>
-
-          <View style={styles.successContainer}>
-            <Text style={styles.successIcon}>✅</Text>
-            <Text style={styles.successTitle}>Thank you!</Text>
-            <Text style={styles.successMessage}>
-              Your feedback helps us improve the services of our barangay.
-            </Text>
-          </View>
+        <View style={styles.successContainer}>
+          <Text style={styles.successIcon}>✅</Text>
+          <Text style={styles.successTitle}>Thank you!</Text>
+          <Text style={styles.successMessage}>
+            Your feedback helps us improve the services of our barangay.
+          </Text>
         </View>
       </SafeAreaView>
     );
   }
 
-  // ✅ Main Feedback Page
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
@@ -176,98 +142,68 @@ export default function FeedbackPage() {
           <Text style={styles.headerText}>Feedback & Rating</Text>
         </View>
 
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.infoCard}>
-            <Ionicons
-              name="information-circle-outline"
-              size={28}
-              color="#4A90E2"
-            />
-            <View style={styles.infoContent}>
-              <Text style={styles.infoTitle}>Rate Our Officials</Text>
-              <Text style={styles.infoText}>
-                Your feedback helps us improve our services and better serve the
-                community.
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Rate Officials</Text>
-            <Text style={styles.sectionSubtitle}>
-              Tap on stars to rate and leave a comment for each official.
-            </Text>
-
+        {loading ? (
+          <ActivityIndicator size="large" color="#667eea" style={{ marginTop: 40 }} />
+        ) : (
+          <ScrollView contentContainerStyle={styles.scrollContent}>
             {officials.map((official) => (
-              <View key={official.key} style={styles.officialCard}>
+              <View key={official.id} style={styles.officialCard}>
                 <View style={styles.officialHeader}>
                   <View style={styles.officialIconContainer}>
-                    <Ionicons name={official.icon} size={24} color="#667eea" />
+                    <Ionicons name="person" size={24} color="#667eea" />
                   </View>
-                  <Text style={styles.officialName}>{official.name}</Text>
+                  <View>
+                    <Text style={styles.officialName}>{official.name}</Text>
+                    <Text style={styles.officialPosition}>
+                      {official.position}
+                    </Text>
+                  </View>
                 </View>
+
                 <RatingStars
-                  official={official.key}
-                  currentRating={ratings[official.key]}
-                  handleRating={handleRating}
+                  id={official.id}
+                  currentRating={ratings[official.id] || 0}
                 />
 
                 <TextInput
                   style={styles.commentInput}
-                  placeholder={`Write a comment for ${official.name} (optional)...`}
+                  placeholder={`Write a comment for ${official.name}...`}
                   placeholderTextColor="#999"
-                  value={comments[official.key]}
-                  onChangeText={(text) => handleComment(official.key, text)}
+                  value={comments[official.id] || ""}
+                  onChangeText={(text) => handleComment(official.id, text)}
                   multiline
                   numberOfLines={3}
                   textAlignVertical="top"
                 />
               </View>
             ))}
-          </View>
 
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Additional Comments</Text>
-            <Text style={styles.sectionSubtitle}>
-              Share your thoughts or suggestions (Optional)
-            </Text>
-            <View style={styles.feedbackSection}>
-              <View style={styles.textInputContainer}>
-                <Ionicons
-                  name="document-text-outline"
-                  size={18}
-                  color="#666"
-                  style={styles.inputIcon}
-                />
-                <Text style={styles.feedbackLabel}>Your Feedback</Text>
-              </View>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Additional Feedback</Text>
               <TextInput
                 style={styles.textInput}
-                placeholder="Write your general feedback or suggestion here..."
+                placeholder="Write your general feedback here..."
                 placeholderTextColor="#999"
                 multiline
-                numberOfLines={6}
+                numberOfLines={5}
                 value={feedback}
                 onChangeText={setFeedback}
                 textAlignVertical="top"
               />
             </View>
-          </View>
 
-          <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-            <Text style={styles.submitButtonText}>Submit Feedback</Text>
-            <Ionicons name="send" size={18} color="white" />
-          </TouchableOpacity>
-        </ScrollView>
+            <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
+              <Text style={styles.submitButtonText}>Submit Feedback</Text>
+              <Ionicons name="send" size={18} color="white" />
+            </TouchableOpacity>
+          </ScrollView>
+        )}
       </View>
     </SafeAreaView>
   );
 }
 
-
+// ✅ Keep your existing styles
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: "#F5F7FA" },
   container: { flex: 1, backgroundColor: "white" },
@@ -279,33 +215,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#E0E0E0",
   },
-  inputIcon: {
-  width: 20,
-  height: 20,
-  marginRight: 10,
-},
-
   backButton: { padding: 8, marginRight: 12 },
   backIcon: { fontSize: 24, color: "#333" },
   headerText: { fontSize: 24, fontWeight: "700", color: "#333" },
   scrollContent: { padding: 20 },
-  infoCard: {
-    flexDirection: "row",
-    gap: 16,
-    padding: 20,
-    backgroundColor: "#EBF5FF",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#B3D9FF",
-    marginBottom: 28,
-    alignItems: "flex-start",
-  },
-  infoContent: { flex: 1 },
-  infoTitle: { fontSize: 16, fontWeight: "700", color: "#1A1A1A", marginBottom: 6 },
-  infoText: { fontSize: 14, color: "#4A5568", lineHeight: 20 },
-  section: { marginBottom: 32 },
-  sectionTitle: { fontSize: 20, fontWeight: "700", color: "#1A1A1A", marginBottom: 4 },
-  sectionSubtitle: { fontSize: 14, color: "#6B7280", marginBottom: 20 },
   officialCard: {
     backgroundColor: "#F9FAFB",
     borderRadius: 16,
@@ -324,7 +237,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginRight: 14,
   },
-  officialName: { fontSize: 16, fontWeight: "600", color: "#1A1A1A", flex: 1 },
+  officialName: { fontSize: 16, fontWeight: "600", color: "#1A1A1A" },
+  officialPosition: { fontSize: 13, color: "#6B7280" },
   starsContainer: { flexDirection: "row", justifyContent: "center", gap: 8 },
   star: { fontSize: 32, padding: 4 },
   commentInput: {
@@ -337,23 +251,16 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     color: "#333",
   },
-  feedbackSection: {
-    backgroundColor: "white",
-    borderRadius: 16,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-  },
-  textInputContainer: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 },
-  feedbackLabel: { fontSize: 14, fontWeight: "600", color: "#333" },
+  section: { marginTop: 30, marginBottom: 40 },
+  sectionTitle: { fontSize: 20, fontWeight: "700", color: "#1A1A1A", marginBottom: 10 },
   textInput: {
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: "#E0E0E0",
-    borderRadius: 12,
+    borderRadius: 10,
     padding: 14,
     fontSize: 15,
-    minHeight: 140,
-    backgroundColor: "#F9FAFB",
+    minHeight: 120,
+    backgroundColor: "#FFFFFF",
     color: "#333",
   },
   submitButton: {
