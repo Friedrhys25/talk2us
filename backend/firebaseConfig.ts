@@ -6,13 +6,13 @@ import { getStorage } from "firebase/storage";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyCClZL4LQep_2AiJGLAsnq818DePxn9YT4",
-  authDomain: "talk2kap-8c526.firebaseapp.com",
-  databaseURL: "https://talk2kap-8c526-default-rtdb.firebaseio.com",
-  projectId: "talk2kap-8c526",
-  storageBucket: "talk2kap-8c526.appspot.com", // ✅ must end with .appspot.com
-  messagingSenderId: "608373284626",
-  appId: "1:608373284626:web:9a24fc3e0b6aa2d6f5ddcb",
+  apiKey: "FIREBASE_API_KEY",
+  authDomain: "FIREBASE_AUTH_DOMAIN",
+  databaseURL: "FIREBASE_DATABASE_URL",
+  projectId: "FIREBASE_PROJECT_ID",
+  storageBucket: "FIREBASE_STORAGE_BUCKET", // ✅ must end with .appspot.com
+  messagingSenderId: "FIREBASE_MESSAGING_SENDER_ID",
+  appId: "FIREBASE_APP_ID",
   measurementId: "G-4NGNTZQ24M",
 };
 
