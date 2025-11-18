@@ -13,12 +13,25 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { get, ref, update } from "firebase/database";
-import { db, auth, storage } from "../../backend/firebaseConfig";
+import { db, auth } from "../../backend/firebaseConfig";
 import { signOut } from "firebase/auth";
 import * as ImagePicker from "expo-image-picker";
-import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 
 // ✅ Emoji-based Ionicons (no dependency)
+type UserData = {
+  name: string;
+  email: string;
+  phone: string;
+  address: string;
+  purok: string;
+  age: string;
+  memberSince: string;
+  id_verification: string;
+  avatar: string;
+  idstatus: "Pending" | "Denied" | "Verified";
+};
+
+
 type IoniconsProps = {
   name: keyof typeof iconMap | string;
   size: number;
@@ -57,7 +70,7 @@ export default function ProfilePage() {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
-  const [userData, setUserData] = useState({
+  const [userData, setUserData] = useState<UserData>({
     name: "",
     email: "",
     phone: "",
@@ -67,29 +80,45 @@ export default function ProfilePage() {
     memberSince: "",
     id_verification: "",
     avatar: "",
-    id_verification_status: false,
+    idstatus: "Pending",
   });
+
+  
+  // Helper functions for ID status
+  const getStatusColor = (status: string) => {
+    switch(status) {
+      case "Verified": return "#50C878";
+      case "Denied": return "#E74C3C";
+      case "Pending": return "#F39C12";
+      default: return "#F39C12";
+    }
+  };
+
+  const getStatusEmoji = (status: string) => {
+    switch(status) {
+      case "Verified": return "✔️";
+      case "Denied": return "❌";
+      case "Pending": return "⏳";
+      default: return "⏳";
+    }
+  };
 
   // Fetch user data from Firebase
   useEffect(() => {
     const fetchUserData = async () => {
       try {
         const currentUser = auth.currentUser;
-        
         if (!currentUser) {
           Alert.alert("Error", "No user logged in");
           router.replace("/");
           return;
         }
 
-        // Get user data from Realtime Database
         const userRef = ref(db, `users/${currentUser.uid}`);
         const snapshot = await get(userRef);
 
         if (snapshot.exists()) {
           const data = snapshot.val();
-          
-          // Format member since date
           const createdDate = data.createdAt ? new Date(data.createdAt) : new Date();
           const memberSince = createdDate.toLocaleDateString('en-US', { 
             month: 'long', 
@@ -103,10 +132,10 @@ export default function ProfilePage() {
             address: data.address || "No address",
             purok: data.purok || "",
             age: data.age || "",
-            memberSince: memberSince,
+            memberSince,
             id_verification: data.id_verification || "",
             avatar: data.avatar || "",
-            id_verification_status: data.id_verification_status || false,
+            idstatus: data.idstatus || "Pending",
           });
         } else {
           Alert.alert("Error", "User data not found");
@@ -123,147 +152,101 @@ export default function ProfilePage() {
   }, []);
 
   // Upload avatar image
-    const handleAvatarUpload = async () => {
-      try {
-        const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (!permissionResult.granted) {
-          Alert.alert("Permission required", "Please allow photo access to change your avatar.");
-          return;
-        }
-
-        const result = await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ImagePicker.MediaTypeOptions.Images,
-          allowsEditing: true,
-          aspect: [1, 1],
-          quality: 0.5, // reduce size
-          base64: true, // ✅ add this
-        });
-
-        if (result.canceled || !result.assets?.length) return;
-
-        const base64String = result.assets[0].base64;
-        const currentUser = auth.currentUser;
-        if (!currentUser || !base64String) {
-          Alert.alert("Error", "You must be logged in to change avatar.");
-          return;
-        }
-
-        setUploading(true);
-
-        const userRef = ref(db, `users/${currentUser.uid}`);
-        await update(userRef, {
-          avatar: `data:image/jpeg;base64,${base64String}`, // store as data URL
-          avatar_uploaded_at: new Date().toISOString(),
-        });
-
-        setUserData(prev => ({ ...prev, avatar: `data:image/jpeg;base64,${base64String}` }));
-
-        Alert.alert("Success", "Avatar updated successfully!");
-      } catch (error) {
-        console.error("Error uploading avatar:", error);
-        Alert.alert("Error", "Failed to update avatar.");
-      } finally {
-        setUploading(false);
+  const handleAvatarUpload = async () => {
+    try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permissionResult.granted) {
+        Alert.alert("Permission required", "Please allow photo access to change your avatar.");
+        return;
       }
-    };
 
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.5,
+        base64: true,
+      });
 
+      if (result.canceled || !result.assets?.length) return;
+
+      const base64String = result.assets[0].base64;
+      const currentUser = auth.currentUser;
+      if (!currentUser || !base64String) {
+        Alert.alert("Error", "You must be logged in to change avatar.");
+        return;
+      }
+
+      setUploading(true);
+
+      const userRef = ref(db, `users/${currentUser.uid}`);
+      await update(userRef, {
+        avatar: `data:image/jpeg;base64,${base64String}`,
+        avatar_uploaded_at: new Date().toISOString(),
+      });
+
+      setUserData(prev => ({ ...prev, avatar: `data:image/jpeg;base64,${base64String}` }));
+
+      Alert.alert("Success", "Avatar updated successfully!");
+    } catch (error) {
+      console.error("Error uploading avatar:", error);
+      Alert.alert("Error", "Failed to update avatar.");
+    } finally {
+      setUploading(false);
+    }
+  };
 
   // Upload ID verification image
-const handleUploadID = async () => {
-  try {
-    // Request permission to access photos
-    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permissionResult.granted) {
-      Alert.alert(
-        "Permission Required",
-        "Please allow photo access to upload your ID."
-      );
-      return;
+  const handleUploadID = async () => {
+    try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permissionResult.granted) {
+        Alert.alert("Permission Required", "Please allow photo access to upload your ID.");
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.5,
+        base64: true,
+      });
+
+      if (result.canceled || !result.assets?.length) return;
+
+      const base64String = result.assets[0].base64;
+      const currentUser = auth.currentUser;
+      if (!currentUser || !base64String) {
+        Alert.alert("Error", "You must be logged in to upload an ID.");
+        return;
+      }
+
+      setUploading(true);
+
+      const userRef = ref(db, `users/${currentUser.uid}`);
+      await update(userRef, {
+        id_verification: `data:image/jpeg;base64,${base64String}`,
+        id_verification_uploaded_at: new Date().toISOString(),
+        idstatus: "Pending",
+      });
+
+      setUserData(prev => ({
+        ...prev,
+        id_verification: `data:image/jpeg;base64,${base64String}`,
+        idstatus: "Pending",
+      }));
+
+      Alert.alert("Success", "Your ID has been uploaded successfully! Verification is pending.");
+    } catch (error) {
+      console.error("Error uploading ID:", error);
+      Alert.alert("Error", "Failed to upload ID. Please try again.");
+    } finally {
+      setUploading(false);
     }
-
-    // Pick image and get base64 string
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 0.5,   // reduce size
-      base64: true,   // ✅ important
-    });
-
-    if (result.canceled || !result.assets?.length) {
-      return;
-    }
-
-    const base64String = result.assets[0].base64;
-    const currentUser = auth.currentUser;
-
-    if (!currentUser || !base64String) {
-      Alert.alert("Error", "You must be logged in to upload an ID.");
-      return;
-    }
-
-    setUploading(true);
-
-    // 💾 Save base64 string directly to Realtime Database
-    const userRef = ref(db, `users/${currentUser.uid}`);
-    await update(userRef, {
-      id_verification: `data:image/jpeg;base64,${base64String}`,
-      id_verification_uploaded_at: new Date().toISOString(),
-      id_verification_status: false, // ✅ mark as pending
-    });
-
-    // Update state to immediately show new ID and pending status
-    setUserData(prev => ({
-      ...prev,
-      id_verification: `data:image/jpeg;base64,${base64String}`,
-      id_verification_status: false,
-    }));
-
-    Alert.alert("Success", "Your ID has been uploaded successfully! Verification is pending.");
-  } catch (error) {
-    console.error("Error uploading ID:", error);
-    Alert.alert("Error", "Failed to upload ID. Please try again.");
-  } finally {
-    setUploading(false);
-  }
-};
-
-
-
-
-  const stats = [
-    { label: "Complaints Filed", value: "12", icon: "📋", color: "#4A90E2" },
-    { label: "Resolved", value: "9", icon: "✅", color: "#50C878" },
-    { label: "Response Rate", value: "95%", icon: "📈", color: "#F39C12" },
-  ];
-
-  const recentActivity = [
-    {
-      id: 1,
-      action: "Filed complaint",
-      title: "Road repair needed",
-      time: "2 days ago",
-      status: "In Progress",
-    },
-    {
-      id: 2,
-      action: "Received response",
-      title: "Street light issue",
-      time: "5 days ago",
-      status: "Resolved",
-    },
-    {
-      id: 3,
-      action: "Submitted feedback",
-      title: "Service improvement",
-      time: "1 week ago",
-      status: "Reviewed",
-    },
-  ];
+  };
 
   const handleLogout = () => setShowLogoutModal(true);
-  
   const confirmLogout = async () => {
     try {
       await signOut(auth);
@@ -274,10 +257,8 @@ const handleUploadID = async () => {
       Alert.alert("Error", "Failed to log out");
     }
   };
-  
   const cancelLogout = () => setShowLogoutModal(false);
 
-  // Show loading spinner while fetching data
   if (loading) {
     return (
       <SafeAreaView style={styles.safeArea}>
@@ -289,10 +270,21 @@ const handleUploadID = async () => {
     );
   }
 
-  // Format full address
   const fullAddress = userData.purok 
     ? `Purok ${userData.purok}, ${userData.address}`
     : userData.address;
+
+  const stats = [
+    { label: "Complaints Filed", value: "12", icon: "📋", color: "#4A90E2" },
+    { label: "Resolved", value: "9", icon: "✅", color: "#50C878" },
+    { label: "Response Rate", value: "95%", icon: "📈", color: "#F39C12" },
+  ];
+
+  const recentActivity = [
+    { id: 1, action: "Filed complaint", title: "Road repair needed", time: "2 days ago", status: "In Progress" },
+    { id: 2, action: "Received response", title: "Street light issue", time: "5 days ago", status: "Resolved" },
+    { id: 3, action: "Submitted feedback", title: "Service improvement", time: "1 week ago", status: "Reviewed" },
+  ];
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -309,31 +301,19 @@ const handleUploadID = async () => {
         </View>
 
         {/* Logout Modal */}
-        <Modal
-          visible={showLogoutModal}
-          transparent
-          animationType="fade"
-          onRequestClose={cancelLogout}
-        >
+        <Modal visible={showLogoutModal} transparent animationType="fade" onRequestClose={cancelLogout}>
           <View style={styles.modalOverlay}>
             <View style={styles.modalCard}>
               <Ionicons name="log-out-outline" size={48} color="#E74C3C" />
               <Text style={styles.modalTitle}>Log Out</Text>
               <Text style={styles.modalMessage}>
-                Are you sure you want to log out? You'll need to sign in again
-                to access your account.
+                Are you sure you want to log out? You'll need to sign in again to access your account.
               </Text>
               <View style={styles.modalButtons}>
-                <TouchableOpacity
-                  style={[styles.modalBtn, styles.cancelBtn]}
-                  onPress={cancelLogout}
-                >
+                <TouchableOpacity style={[styles.modalBtn, styles.cancelBtn]} onPress={cancelLogout}>
                   <Text style={styles.cancelText}>Cancel</Text>
                 </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.modalBtn, styles.confirmBtn]}
-                  onPress={confirmLogout}
-                >
+                <TouchableOpacity style={[styles.modalBtn, styles.confirmBtn]} onPress={confirmLogout}>
                   <Text style={styles.confirmText}>Yes, Log Out</Text>
                 </TouchableOpacity>
               </View>
@@ -342,14 +322,14 @@ const handleUploadID = async () => {
         </Modal>
 
         <ScrollView contentContainerStyle={styles.scroll}>
-          {/* Profile Card */}
+          {/* Avatar */}
           <View style={styles.avatarContainer}>
             <View style={styles.avatar}>
               <Image
                 source={
                   userData.avatar
                     ? { uri: userData.avatar }
-                    : { uri: "https://via.placeholder.com/100" } // fallback online image
+                    : { uri: "https://via.placeholder.com/100" }
                 }
                 style={{ width: 100, height: 100, borderRadius: 50 }}
               />
@@ -363,17 +343,11 @@ const handleUploadID = async () => {
             </TouchableOpacity>
           </View>
 
-
           {/* Stats */}
           <View style={styles.statsGrid}>
             {stats.map((stat, i) => (
               <View key={i} style={styles.statCard}>
-                <View
-                  style={[
-                    styles.statIcon,
-                    { backgroundColor: `${stat.color}25` },
-                  ]}
-                >
+                <View style={[styles.statIcon, { backgroundColor: `${stat.color}25` }]}>
                   <Text style={{ fontSize: 24 }}>{stat.icon}</Text>
                 </View>
                 <Text style={styles.statValue}>{stat.value}</Text>
@@ -403,13 +377,13 @@ const handleUploadID = async () => {
               </View>
             ))}
 
-            {/* ID Verification Section */}
+            {/* ID Verification */}
             <View style={styles.verificationSection}>
               <View style={styles.verificationHeader}>
                 <Ionicons name="shield-outline" size={20} color="#667eea" />
                 <Text style={styles.verificationTitle}>ID Verification</Text>
               </View>
-              
+
               {userData.id_verification ? (
                 <View style={styles.verifiedContainer}>
                   <Image 
@@ -417,11 +391,9 @@ const handleUploadID = async () => {
                     style={styles.idImage}
                     resizeMode="cover"
                   />
-                  {userData.id_verification_status === false ? (
-                    <Text style={{ color: "#F39C12", marginTop: 6 }}>⏳ ID verification pending</Text>
-                  ) : (
-                    <Text style={{ color: "#50C878", marginTop: 6 }}>✔️ ID verified</Text>
-                  )}
+                  <Text style={{ color: getStatusColor(userData.idstatus), marginTop: 6 }}>
+                    {getStatusEmoji(userData.idstatus)} {userData.idstatus || "Pending"}
+                  </Text>
 
                   <TouchableOpacity 
                     style={styles.reuploadButton}
@@ -454,7 +426,7 @@ const handleUploadID = async () => {
                   )}
                 </TouchableOpacity>
               )}
-              
+
               <Text style={styles.verificationNote}>
                 📋 Upload a valid government ID for account verification
               </Text>
@@ -473,9 +445,7 @@ const handleUploadID = async () => {
                   <Text style={styles.activityAction}>{act.action}</Text>
                   <Text style={styles.activityTitle}>{act.title}</Text>
                   <View style={styles.activityFooter}>
-                    <Text style={styles.activityTime}>
-                      🕐 {act.time}
-                    </Text>
+                    <Text style={styles.activityTime}>🕐 {act.time}</Text>
                     <View
                       style={[
                         styles.activityBadge,
@@ -505,243 +475,58 @@ const handleUploadID = async () => {
   );
 }
 
+// Styles (same as your original)
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: "#F5F7FA" },
   container: { flex: 1, backgroundColor: "#fff" },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#E0E0E0",
-  },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 16, borderBottomWidth: 1, borderBottomColor: "#E0E0E0" },
   iconButton: { padding: 8 },
   headerText: { fontSize: 22, fontWeight: "700", color: "#333" },
   scroll: { padding: 20 },
-  profileCard: {
-    backgroundColor: "#fff",
-    borderRadius: 20,
-    padding: 24,
-    alignItems: "center",
-    marginBottom: 20,
-    elevation: 3,
-  },
   avatarContainer: { position: "relative" },
-  avatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: "#F3F4F6",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatarBadge: {
-    position: "absolute",
-    bottom: 0,
-    right: 0,
-    backgroundColor: "#667eea",
-    borderRadius: 16,
-    padding: 6,
-  },
-  userName: { fontSize: 22, fontWeight: "700", color: "#1A1A1A", marginTop: 10 },
-  userEmail: { fontSize: 14, color: "#6B7280" },
-  memberBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FFF9E6",
-    borderRadius: 20,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    marginTop: 6,
-  },
-  memberText: { color: "#F39C12", fontSize: 12, marginLeft: 6 },
+  avatar: { width: 100, height: 100, borderRadius: 50, backgroundColor: "#F3F4F6", alignItems: "center", justifyContent: "center" },
+  avatarBadge: { position: "absolute", bottom: 0, right: 0, backgroundColor: "#667eea", borderRadius: 16, padding: 6 },
   statsGrid: { flexDirection: "row", justifyContent: "space-between", marginBottom: 20 },
-  statCard: {
-    flex: 1,
-    backgroundColor: "#fff",
-    borderRadius: 14,
-    padding: 12,
-    alignItems: "center",
-    marginHorizontal: 4,
-    elevation: 2,
-  },
-  statIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 6,
-  },
+  statCard: { flex: 1, backgroundColor: "#fff", borderRadius: 14, padding: 12, alignItems: "center", marginHorizontal: 4, elevation: 2 },
+  statIcon: { width: 48, height: 48, borderRadius: 12, alignItems: "center", justifyContent: "center", marginBottom: 6 },
   statValue: { fontSize: 20, fontWeight: "700" },
   statLabel: { fontSize: 12, color: "#666" },
-  section: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 20,
-    elevation: 2,
-  },
-  sectionTitle: { fontSize: 18, fontWeight: "700", marginBottom: 10 },
-  infoItem: { flexDirection: "row", marginBottom: 12 },
-  infoIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: "#F3F4F6",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 10,
-  },
-  infoLabel: { fontSize: 12, color: "#6B7280" },
-  infoValue: { fontSize: 15, fontWeight: "600" },
-  verificationSection: {
-    marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: "#E5E7EB",
-  },
-  verificationHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  verificationTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#333",
-    marginLeft: 8,
-  },
-  verifiedContainer: {
-    alignItems: "center",
-  },
-  idImage: {
-    width: "100%",
-    height: 200,
-    borderRadius: 12,
-    marginBottom: 12,
-    backgroundColor: "#F3F4F6",
-  },
-  verifiedBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#D4EDDA",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    marginBottom: 12,
-  },
-  verifiedText: {
-    color: "#50C878",
-    fontSize: 13,
-    fontWeight: "600",
-    marginLeft: 6,
-  },
-  reuploadButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#F3F4F6",
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    width: "100%",
-  },
-  reuploadText: {
-    color: "#667eea",
-    fontSize: 14,
-    fontWeight: "600",
-    marginLeft: 8,
-  },
-  uploadButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#667eea",
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 10,
-    marginBottom: 12,
-  },
-  uploadButtonText: {
-    color: "#fff",
-    fontSize: 15,
-    fontWeight: "600",
-    marginLeft: 10,
-  },
-  verificationNote: {
-    fontSize: 12,
-    color: "#6B7280",
-    textAlign: "center",
-    marginTop: 8,
-  },
-  activityItem: {
-    flexDirection: "row",
-    backgroundColor: "#F9FAFB",
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 8,
-  },
-  activityIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: "#EEF2FF",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 10,
-  },
-  activityAction: { fontSize: 12, color: "#6B7280" },
-  activityTitle: { fontSize: 15, fontWeight: "600" },
-  activityFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  activityTime: { fontSize: 12, color: "#999" },
-  activityBadge: {
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-  },
-  badgeResolved: { backgroundColor: "#D4EDDA" },
-  badgeProgress: { backgroundColor: "#FFF3CD" },
-  badgeReviewed: { backgroundColor: "#E3F2FD" },
-  badgeText: { fontSize: 11, fontWeight: "600" },
-  logoutButton: {
-    flexDirection: "row",
-    backgroundColor: "#FFEBEE",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 16,
-    borderRadius: 14,
-  },
-  logoutText: { fontSize: 16, fontWeight: "700", color: "#E74C3C", marginLeft: 6 },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.4)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  modalCard: {
-    backgroundColor: "#fff",
-    padding: 24,
-    borderRadius: 20,
-    width: "85%",
-    alignItems: "center",
-  },
-  modalTitle: { fontSize: 22, fontWeight: "700", marginTop: 10 },
-  modalMessage: { fontSize: 14, color: "#555", textAlign: "center", marginVertical: 12 },
-  modalButtons: { flexDirection: "row", width: "100%", justifyContent: "space-between" },
-  modalBtn: {
-    flex: 1,
-    alignItems: "center",
-    paddingVertical: 12,
-    borderRadius: 10,
-    marginHorizontal: 4,
-  },
-  cancelBtn: { backgroundColor: "#F3F4F6" },
+  section: { marginBottom: 20 },
+  sectionTitle: { fontSize: 16, fontWeight: "600", marginBottom: 10, color: "#333" },
+  infoItem: { flexDirection: "row", alignItems: "center", paddingVertical: 10 },
+  infoIcon: { width: 40, alignItems: "center" },
+  infoLabel: { fontSize: 12, color: "#999" },
+  infoValue: { fontSize: 14, fontWeight: "600", color: "#333" },
+  verificationSection: { marginTop: 20 },
+  verificationHeader: { flexDirection: "row", alignItems: "center", marginBottom: 8 },
+  verificationTitle: { marginLeft: 8, fontWeight: "600", fontSize: 14, color: "#333" },
+  verifiedContainer: { alignItems: "center", marginVertical: 8 },
+  idImage: { width: 150, height: 100, borderRadius: 10 },
+  reuploadButton: { flexDirection: "row", alignItems: "center", marginTop: 8 },
+  reuploadText: { marginLeft: 6, color: "#667eea", fontWeight: "600" },
+  uploadButton: { backgroundColor: "#667eea", flexDirection: "row", alignItems: "center", justifyContent: "center", padding: 12, borderRadius: 8, marginVertical: 8 },
+  uploadButtonText: { color: "#fff", fontWeight: "600", marginLeft: 6 },
+  verificationNote: { fontSize: 12, color: "#666", marginTop: 6 },
+  activityItem: { flexDirection: "row", paddingVertical: 10 },
+  activityIcon: { width: 40, alignItems: "center" },
+  activityAction: { fontSize: 12, color: "#999" },
+  activityTitle: { fontSize: 14, fontWeight: "600", color: "#333" },
+  activityFooter: { flexDirection: "row", justifyContent: "space-between", marginTop: 4 },
+  activityTime: { fontSize: 12, color: "#666" },
+  activityBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 },
+  badgeText: { fontSize: 10, color: "#fff", fontWeight: "600" },
+  badgeResolved: { backgroundColor: "#50C878" },
+  badgeProgress: { backgroundColor: "#F39C12" },
+  badgeReviewed: { backgroundColor: "#4A90E2" },
+  logoutButton: { flexDirection: "row", alignItems: "center", padding: 12, marginTop: 10 },
+  logoutText: { color: "#E74C3C", fontWeight: "600", marginLeft: 6 },
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", alignItems: "center" },
+  modalCard: { width: "80%", backgroundColor: "#fff", borderRadius: 14, padding: 20, alignItems: "center" },
+  modalTitle: { fontSize: 18, fontWeight: "700", marginTop: 10 },
+  modalMessage: { fontSize: 14, color: "#666", textAlign: "center", marginVertical: 12 },
+  modalButtons: { flexDirection: "row", justifyContent: "space-between", marginTop: 10, width: "100%" },
+  modalBtn: { flex: 1, padding: 10, borderRadius: 8, marginHorizontal: 4, alignItems: "center" },
+  cancelBtn: { backgroundColor: "#E0E0E0" },
   confirmBtn: { backgroundColor: "#E74C3C" },
   cancelText: { color: "#333", fontWeight: "600" },
   confirmText: { color: "#fff", fontWeight: "600" },
