@@ -66,6 +66,8 @@ export default function ProfilePage() {
     age: "",
     memberSince: "",
     id_verification: "",
+    avatar: "",
+    id_verification_status: false,
   });
 
   // Fetch user data from Firebase
@@ -103,6 +105,8 @@ export default function ProfilePage() {
             age: data.age || "",
             memberSince: memberSince,
             id_verification: data.id_verification || "",
+            avatar: data.avatar || "",
+            id_verification_status: data.id_verification_status || false,
           });
         } else {
           Alert.alert("Error", "User data not found");
@@ -118,8 +122,55 @@ export default function ProfilePage() {
     fetchUserData();
   }, []);
 
+  // Upload avatar image
+    const handleAvatarUpload = async () => {
+      try {
+        const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!permissionResult.granted) {
+          Alert.alert("Permission required", "Please allow photo access to change your avatar.");
+          return;
+        }
+
+        const result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          allowsEditing: true,
+          aspect: [1, 1],
+          quality: 0.5, // reduce size
+          base64: true, // ✅ add this
+        });
+
+        if (result.canceled || !result.assets?.length) return;
+
+        const base64String = result.assets[0].base64;
+        const currentUser = auth.currentUser;
+        if (!currentUser || !base64String) {
+          Alert.alert("Error", "You must be logged in to change avatar.");
+          return;
+        }
+
+        setUploading(true);
+
+        const userRef = ref(db, `users/${currentUser.uid}`);
+        await update(userRef, {
+          avatar: `data:image/jpeg;base64,${base64String}`, // store as data URL
+          avatar_uploaded_at: new Date().toISOString(),
+        });
+
+        setUserData(prev => ({ ...prev, avatar: `data:image/jpeg;base64,${base64String}` }));
+
+        Alert.alert("Success", "Avatar updated successfully!");
+      } catch (error) {
+        console.error("Error uploading avatar:", error);
+        Alert.alert("Error", "Failed to update avatar.");
+      } finally {
+        setUploading(false);
+      }
+    };
+
+
+
   // Upload ID verification image
-  const handleUploadID = async () => {
+const handleUploadID = async () => {
   try {
     // Request permission to access photos
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -131,41 +182,45 @@ export default function ProfilePage() {
       return;
     }
 
-    // Pick image
+    // Pick image and get base64 string
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [4, 3],
-      quality: 1,
+      quality: 0.5,   // reduce size
+      base64: true,   // ✅ important
     });
 
     if (result.canceled || !result.assets?.length) {
       return;
     }
 
-    const selectedUri = result.assets[0].uri;
+    const base64String = result.assets[0].base64;
     const currentUser = auth.currentUser;
 
-    if (!currentUser) {
+    if (!currentUser || !base64String) {
       Alert.alert("Error", "You must be logged in to upload an ID.");
       return;
     }
 
     setUploading(true);
 
-    // 💾 Save image URI directly to Realtime Database
+    // 💾 Save base64 string directly to Realtime Database
     const userRef = ref(db, `users/${currentUser.uid}`);
     await update(userRef, {
-      id_verification: selectedUri, // only local URI
+      id_verification: `data:image/jpeg;base64,${base64String}`,
       id_verification_uploaded_at: new Date().toISOString(),
+      id_verification_status: false, // ✅ mark as pending
     });
 
-    setUserData((prev) => ({
+    // Update state to immediately show new ID and pending status
+    setUserData(prev => ({
       ...prev,
-      id_verification: selectedUri,
+      id_verification: `data:image/jpeg;base64,${base64String}`,
+      id_verification_status: false,
     }));
 
-    Alert.alert("Success", "Your ID has been uploaded successfully!");
+    Alert.alert("Success", "Your ID has been uploaded successfully! Verification is pending.");
   } catch (error) {
     console.error("Error uploading ID:", error);
     Alert.alert("Error", "Failed to upload ID. Please try again.");
@@ -173,6 +228,8 @@ export default function ProfilePage() {
     setUploading(false);
   }
 };
+
+
 
 
   const stats = [
@@ -286,24 +343,26 @@ export default function ProfilePage() {
 
         <ScrollView contentContainerStyle={styles.scroll}>
           {/* Profile Card */}
-          <View style={styles.profileCard}>
-            <View style={styles.avatarContainer}>
-              <View style={styles.avatar}>
-                <Ionicons name="person-circle" size={80} color="#667eea" />
-              </View>
-              <TouchableOpacity style={styles.avatarBadge}>
-                <Ionicons name="create-outline" size={16} color="#fff" />
-              </TouchableOpacity>
+          <View style={styles.avatarContainer}>
+            <View style={styles.avatar}>
+              <Image
+                source={
+                  userData.avatar
+                    ? { uri: userData.avatar }
+                    : { uri: "https://via.placeholder.com/100" } // fallback online image
+                }
+                style={{ width: 100, height: 100, borderRadius: 50 }}
+              />
             </View>
-            <Text style={styles.userName}>{userData.name}</Text>
-            <Text style={styles.userEmail}>{userData.email}</Text>
-            <View style={styles.memberBadge}>
-              <Ionicons name="trophy-outline" size={14} color="#F39C12" />
-              <Text style={styles.memberText}>
-                Member since {userData.memberSince}
-              </Text>
-            </View>
+            <TouchableOpacity style={styles.avatarBadge} onPress={handleAvatarUpload}>
+              {uploading ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Ionicons name="camera-outline" size={16} color="#fff" />
+              )}
+            </TouchableOpacity>
           </View>
+
 
           {/* Stats */}
           <View style={styles.statsGrid}>
@@ -358,10 +417,12 @@ export default function ProfilePage() {
                     style={styles.idImage}
                     resizeMode="cover"
                   />
-                  <View style={styles.verifiedBadge}>
-                    <Ionicons name="checkmark-circle" size={16} color="#50C878" />
-                    <Text style={styles.verifiedText}>ID Uploaded</Text>
-                  </View>
+                  {userData.id_verification_status === false ? (
+                    <Text style={{ color: "#F39C12", marginTop: 6 }}>⏳ ID verification pending</Text>
+                  ) : (
+                    <Text style={{ color: "#50C878", marginTop: 6 }}>✔️ ID verified</Text>
+                  )}
+
                   <TouchableOpacity 
                     style={styles.reuploadButton}
                     onPress={handleUploadID}

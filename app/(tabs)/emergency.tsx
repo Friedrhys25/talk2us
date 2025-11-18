@@ -39,8 +39,8 @@ export default function EmergencyPage() {
 
 
   const emergencyTypes = [
-    { id: 1, name: "Police", icon: "🛡️", number: "100", color: "#4A90E2", description: "Crime, security threats" },
-    { id: 2, name: "Fire", icon: "🔥", number: "101", color: "#FF6B35", description: "Fire incidents, rescue" },
+    { id: 1, name: "Police", icon: "🛡️", number: "0910 135 0863", color: "#4A90E2", description: "Crime, security threats" },
+    { id: 2, name: "Fire", icon: "🔥", number: "0997 298 5204", color: "#FF6B35", description: "Fire incidents, rescue" },
     { id: 3, name: "Ambulance", icon: "🏥", number: "102", color: "#50C878", description: "Medical emergencies" },
     { id: 4, name: "Disaster", icon: "⚠️", number: "911", color: "#E74C3C", description: "Natural disasters, floods" },
     { id: 5, name: "Traffic", icon: "🚗", number: "136", color: "#F39C12", description: "Accidents, road incidents" },

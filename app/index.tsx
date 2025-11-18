@@ -36,7 +36,6 @@ export default function LoginPage() {
       // Don't show alert, just navigate
       router.replace("/(tabs)/home");
     } catch (error: any) {
-      console.error("❌ Login Error:", error.code, error.message);
       
       // Detailed error handling based on Firebase error codes
       let errorTitle = "Login Failed";
