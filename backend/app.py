@@ -11,7 +11,7 @@ label_model = joblib.load("label_model.pkl")
 type_model = joblib.load("type_model.pkl")
 
 # Configure Gemini API
-genai.configure(api_key="GEMINI_API_KEY")
+genai.configure(api_key="AIzaSyDg_EbxqAGrgiAAOBN1jZIoPVzjeeJaXvk")
 
 app = Flask(__name__)
 CORS(app)
