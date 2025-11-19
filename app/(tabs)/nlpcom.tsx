@@ -34,11 +34,13 @@ export default function App() {
     setLoading(true);
 
     try {
-      const response = await fetch("http://192.168.68.101:5000/classify", {
+        const API_URL = "https://talk2us.onrender.com"; // <- Render URL
+
+        const response = await fetch(`${API_URL}/classify`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message }),
-      });
+        });
 
       if (!response.ok) {
         const errorText = await response.text();
