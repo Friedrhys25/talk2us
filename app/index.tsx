@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { signInWithEmailAndPassword , sendPasswordResetEmail  } from "firebase/auth";
 import { auth } from "../backend/firebaseConfig";
 
 export default function LoginPage() {
@@ -199,16 +199,40 @@ export default function LoginPage() {
         )}
       </TouchableOpacity>
 
-      {/* Forgot Password Link */}
       <TouchableOpacity 
-        onPress={() => Alert.alert("Forgot Password", "Password reset feature coming soon!")}
-        disabled={loading}
+        onPress={async () => {
+          if (!email) {
+            Alert.alert("Enter Email", "Please enter your email first to reset your password.");
+            return;
+          }
+
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!emailRegex.test(email)) {
+            Alert.alert("Invalid Email", "Please enter a valid email before resetting your password.");
+            return;
+          }
+
+          try {
+            // 🔥 SIMPLE RESET — NO REDIRECT REQUIRED
+            await sendPasswordResetEmail(auth, email);
+
+            Alert.alert(
+              "Reset Link Sent",
+              `A password reset link has been sent to ${email}. Check your inbox.`
+            );
+          } catch (error: any) {
+            console.log(error);
+            Alert.alert("Reset Failed", error.message);
+          }
+        }}
         style={{ marginBottom: 20 }}
       >
         <Text style={{ color: "#007AFF", textAlign: "center", fontSize: 14 }}>
           Forgot Password?
         </Text>
       </TouchableOpacity>
+
+
 
       {/* Divider */}
       <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 20 }}>
