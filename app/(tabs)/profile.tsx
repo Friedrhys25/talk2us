@@ -16,6 +16,7 @@ import { get, ref, update } from "firebase/database";
 import { db, auth } from "../../backend/firebaseConfig";
 import { signOut } from "firebase/auth";
 import * as ImagePicker from "expo-image-picker";
+import * as Location from "expo-location";
 
 // ✅ Emoji-based Ionicons (no dependency)
 type UserData = {
@@ -286,6 +287,46 @@ export default function ProfilePage() {
     { id: 3, action: "Submitted feedback", title: "Service improvement", time: "1 week ago", status: "Reviewed" },
   ];
 
+
+  const handleFetchLocation = async () => {
+  try {
+    let { status } = await Location.requestForegroundPermissionsAsync();
+
+    if (status !== "granted") {
+      Alert.alert("Permission Denied", "Enable location permissions to continue.");
+      return;
+    }
+
+    const location = await Location.getCurrentPositionAsync({});
+    const { latitude, longitude } = location.coords;
+
+    // Convert to address
+    const geocode = await Location.reverseGeocodeAsync({ latitude, longitude });
+    let addressText = `${geocode[0].street}, ${geocode[0].city}, ${geocode[0].region}`;
+
+    // Update UI
+    setUserData((prev) => ({ ...prev, address: addressText }));
+
+    // Update Firebase
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      await update(ref(db, `users/${currentUser.uid}`), {
+        address: addressText,
+        latitude,
+        longitude,
+      });
+    }
+
+    Alert.alert("Success", "Address updated using GPS!");
+
+  } catch (error) {
+    console.error(error);
+    Alert.alert("Error", "Failed to get location");
+  }
+};
+
+
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
@@ -363,7 +404,31 @@ export default function ProfilePage() {
               { icon: "person-outline", label: "Full Name", value: userData.name },
               { icon: "mail-outline", label: "Email", value: userData.email },
               { icon: "call-outline", label: "Phone", value: userData.phone },
-              { icon: "location-outline", label: "Address", value: fullAddress },
+              {
+                icon: "location-outline",
+                label: "Address",
+                value: (
+                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                    <Text style={{ fontSize: 14, fontWeight: "600", color: "#333", flex: 1 }}>
+                      {fullAddress || "No Address"}
+                    </Text>
+
+                    <TouchableOpacity
+                      onPress={handleFetchLocation}
+                      style={{
+                        backgroundColor: "#667eea",
+                        paddingVertical: 6,
+                        paddingHorizontal: 10,
+                        borderRadius: 6,
+                        marginLeft: 10,
+                      }}
+                    >
+                      <Text style={{ color: "white", fontWeight: "bold" }}>📍 Get</Text>
+                    </TouchableOpacity>
+                  </View>
+                ),
+              },
+
               ...(userData.age ? [{ icon: "calendar-outline", label: "Age", value: userData.age }] : []),
             ].map((item, i) => (
               <View key={i} style={styles.infoItem}>
